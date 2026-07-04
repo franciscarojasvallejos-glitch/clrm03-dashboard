@@ -514,8 +514,23 @@ function setBLTab(id){ blTab=id; buildGrid(); if(selKey&&bayMap[selKey]){documen
 
 // ── Build Grid ────────────────────────────────────────────────────────────
 function buildGrid(){
-  const CELL_MIN=6;
+  const CELL_MIN=12;
   const parts=[];
+
+  // ── Mapa de slots individuales: "ZONE-aisle-bay-level" → slot obj ──────
+  const slotMap={};
+  // Niveles por pasillo: "ZONE-aisle" → Set de levels
+  const aisleLevels={};
+  BAYS.forEach(b=>{
+    b.slots.forEach(s=>{
+      const sk=`${b.zone}-${b.aisle}-${b.bay}-${s.level}`;
+      if(!slotMap[sk]) slotMap[sk]={skus:[],id:s.id,level:s.level};
+      s.skus.forEach(sku=>slotMap[sk].skus.push(sku));
+    });
+    const ak=`${b.zone}-${b.aisle}`;
+    if(!aisleLevels[ak]) aisleLevels[ak]=new Set();
+    b.slots.forEach(s=>aisleLevels[ak].add(s.level));
+  });
 
   // ── BL section ────────────────────────────────────────────────────────
   const tab=BL_TABS.find(t=>t.id===blTab)||BL_TABS[0];
@@ -532,7 +547,7 @@ function buildGrid(){
   });
   tabMaxBay=tabMaxBay||50;
   const tabStep=tabMaxBay>100?20:tabMaxBay>40?10:5;
-  const gridW=Math.max(tabMaxBay*(CELL_MIN+1),200);
+  const gridW=Math.max(tabMaxBay*(CELL_MIN+2),200);
 
   // pre-computar stats del tab
   let tabOcc=0,tabTot=0,tabBays=0,tabEmpty=0;
@@ -567,19 +582,32 @@ function buildGrid(){
     const wmsSet=BL_WMS_LAYOUT[aisle]||new Set();
     const hasData=BAYS.some(b=>b.zone==='BL'&&b.aisle===aisle&&(tab.id==='Other'||getBLZone(b.aisle,b.bay)===tab.id))||wmsSet.size>0;
     if(!hasData) return;
-    parts.push(`<div class="aisle-row" style="--rh:18px"><div class="aisle-lbl">P${String(aisle).padStart(3,'0')}</div>`);
-    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${tabMaxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
-    for(let bay=1;bay<=tabMaxBay;bay++){
-      const key=`BL-${aisle}-${bay}`; const b=bayMap[key];
-      const inWMS=wmsSet.has(bay);
-      if(b){ const mx=Math.max(...b.slots.map(s=>s.skus.length));
-        const vd=bayVolData(b);
-        const bg=VIEW_MODE==='vol'?volColor(vd.pct):blSkuColor(mx);
-        parts.push(`<div class="bc" style="background:${bg}" data-key="${key}"></div>`);
-      }else if(inWMS){ parts.push(`<div class="bc empty bl-empty" data-key="${key}"></div>`);
-      }else{ parts.push(`<div class="bc wms-gap"></div>`); }
-    }
-    parts.push(`</div></div>`);
+    const levels=Array.from(aisleLevels[`BL-${aisle}`]||new Set([1])).sort((a,b)=>a-b);
+    levels.forEach((lvl,li)=>{
+      const aisleLabel=li===0?`P${String(aisle).padStart(3,'0')}`:`<span style="color:#484f58">L${lvl}</span>`;
+      parts.push(`<div class="aisle-row" style="--rh:14px"><div class="aisle-lbl" style="font-size:${li===0?8:7}px">${aisleLabel}</div>`);
+      parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${tabMaxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
+      for(let bay=1;bay<=tabMaxBay;bay++){
+        const bayKey=`BL-${aisle}-${bay}`;
+        const slKey=`BL-${aisle}-${bay}-${lvl}`;
+        const sl=slotMap[slKey];
+        const inWMS=wmsSet.has(bay);
+        const bayExists=!!bayMap[bayKey];
+        if(sl){
+          const n=sl.skus.length;
+          const vd=bayExists&&VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
+          const bg=VIEW_MODE==='vol'?volColor(vd.pct):blSkuColor(n);
+          parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" data-slkey="${slKey}" title="${slKey}"></div>`);
+        }else if(bayExists){
+          parts.push(`<div class="bc empty bl-empty" data-key="${bayKey}" title="${bayKey} L${lvl}"></div>`);
+        }else if(inWMS){
+          parts.push(`<div class="bc empty bl-empty" data-key="${bayKey}" title="${bayKey} L${lvl} vacío"></div>`);
+        }else{
+          parts.push(`<div class="bc wms-gap"></div>`);
+        }
+      }
+      parts.push(`</div></div>`);
+    });
   });
   parts.push(`</div></div></div>`);
 
@@ -590,7 +618,7 @@ function buildGrid(){
     return tot>0?`${Math.round(occ/tot*100)}% occ · ${BAYS.filter(b=>b.zone===zd.zp&&zd.aisles.includes(b.aisle)).length} bays`:'—';
   }
   ZONE_DEFS.forEach(zd=>{
-    const gridW2=Math.max(zd.maxBay*(CELL_MIN+1),200);
+    const gridW2=Math.max(zd.maxBay*(CELL_MIN+2),200);
     const collapsed=!openZones.has(zd.id)?'collapsed':'';
     parts.push(`<div class="zone-section ${collapsed}" id="zs-${zd.id}">`);
     parts.push(`<div class="zone-hdr" onclick="toggleZone('${zd.id}')"><span style="color:${zd.color}">${zd.label}</span><span style="font-weight:400;color:#484f58;font-size:9px;margin-left:auto">${zoneMeta(zd)}</span></div>`);
@@ -600,19 +628,31 @@ function buildGrid(){
     for(let b=zd.step;b<=zd.maxBay;b+=zd.step) parts.push(`<div class="axis-tick" style="grid-column:${b}">${b}</div>`);
     parts.push(`</div></div>`);
     zd.aisles.forEach(aisle=>{
-      const hasData=BAYS.some(b=>b.zone===zd.zp&&b.aisle===aisle);
-      if(!hasData) return;
-      parts.push(`<div class="aisle-row" style="--rh:14px"><div class="aisle-lbl">P${String(aisle).padStart(3,'0')}</div>`);
-      parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px">`);
-      for(let bay=1;bay<=zd.maxBay;bay++){
-        const key=`${zd.zp}-${aisle}-${bay}`; const b=bayMap[key];
-        if(b){ const mx=Math.max(...b.slots.map(s=>s.skus.length));
-          const vd=bayVolData(b);
-          const bg=VIEW_MODE==='vol'?volColor(vd.pct):skuColor(mx);
-          parts.push(`<div class="bc" style="background:${bg}" data-key="${key}"></div>`);
-        }else{ parts.push(`<div class="bc empty"></div>`); }
-      }
-      parts.push(`</div></div>`);
+      const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
+      if(!baysInAisle.length) return;
+      const levels=Array.from(aisleLevels[`${zd.zp}-${aisle}`]||new Set([1,2,3,4,5,6])).sort((a,b)=>a-b);
+      levels.forEach((lvl,li)=>{
+        const aisleLabel=li===0?`P${String(aisle).padStart(3,'0')}`:`<span style="color:#484f58">L${lvl}</span>`;
+        parts.push(`<div class="aisle-row" style="--rh:12px"><div class="aisle-lbl" style="font-size:${li===0?8:7}px">${aisleLabel}</div>`);
+        parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px">`);
+        for(let bay=1;bay<=zd.maxBay;bay++){
+          const bayKey=`${zd.zp}-${aisle}-${bay}`;
+          const slKey=`${zd.zp}-${aisle}-${bay}-${lvl}`;
+          const sl=slotMap[slKey];
+          const bayExists=!!bayMap[bayKey];
+          if(sl){
+            const n=sl.skus.length;
+            const vd=bayExists&&VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
+            const bg=VIEW_MODE==='vol'?volColor(vd.pct):skuColor(n);
+            parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" data-slkey="${slKey}" title="${slKey}"></div>`);
+          }else if(bayExists){
+            parts.push(`<div class="bc empty" data-key="${bayKey}" title="${bayKey} L${lvl}"></div>`);
+          }else{
+            parts.push(`<div class="bc empty"></div>`);
+          }
+        }
+        parts.push(`</div></div>`);
+      });
     });
     parts.push(`</div></div></div></div>`);
   });
