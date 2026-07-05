@@ -50,6 +50,13 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 .bc.empty.bl-empty{background:#1a4f96 !important;cursor:pointer}
 .bc.empty.bl-empty:hover{filter:brightness(1.4)!important;outline:1px solid rgba(88,166,255,.4)!important;position:relative;z-index:2}
 .bc.wms-gap{background:transparent!important;cursor:default;pointer-events:none}
+.rk-bc{display:flex;flex-direction:row;gap:1px;padding:0;background:#0d1117;border-radius:1px;cursor:pointer;overflow:hidden}
+.rk-bc:hover .bc-pos{filter:brightness(1.6)}
+.rk-bc.sel .bc-pos{filter:brightness(1.4)}
+.bc-pos{flex:1;min-width:3px;transition:filter .07s}
+.bc-pos.ocp:hover{filter:brightness(1.9)!important;outline:1px solid rgba(255,255,255,.5);position:relative;z-index:2}
+.bc-pos.emp{background:#111820}
+.bc-pos.gap{background:transparent}
 .bl-section{margin-bottom:6px}
 .bl-tabs{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
 .bl-tab-btn{background:#21262d;border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer;font-size:10px;font-weight:600;padding:3px 10px;transition:all .15s}
@@ -514,22 +521,25 @@ function setBLTab(id){ blTab=id; buildGrid(); if(selKey&&bayMap[selKey]){documen
 
 // ── Build Grid ────────────────────────────────────────────────────────────
 function buildGrid(){
-  const CELL_MIN=12;
+  const CELL_MIN=14;
   const parts=[];
 
-  // ── Mapa de slots individuales: "ZONE-aisle-bay-level" → slot obj ──────
+  // slotMap: "ZONE-aisle-bay-level-pos" → slot obj (completamente individual)
   const slotMap={};
-  // Niveles por pasillo: "ZONE-aisle" → Set de levels
+  // aisleLevels: "ZONE-aisle" → Set de levels
   const aisleLevels={};
+  // maxPos por zona-pasillo-nivel: "ZONE-aisle-level" → max pos
+  const aisleMaxPos={};
   BAYS.forEach(b=>{
     b.slots.forEach(s=>{
-      const sk=`${b.zone}-${b.aisle}-${b.bay}-${s.level}`;
-      if(!slotMap[sk]) slotMap[sk]={skus:[],id:s.id,level:s.level};
-      s.skus.forEach(sku=>slotMap[sk].skus.push(sku));
+      const sk=`${b.zone}-${b.aisle}-${b.bay}-${s.level}-${s.pos}`;
+      slotMap[sk]={skus:s.skus,id:s.id,level:s.level,pos:s.pos};
+      const ak=`${b.zone}-${b.aisle}`;
+      if(!aisleLevels[ak]) aisleLevels[ak]=new Set();
+      aisleLevels[ak].add(s.level);
+      const pk=`${b.zone}-${b.aisle}-${s.level}`;
+      if(!aisleMaxPos[pk]||s.pos>aisleMaxPos[pk]) aisleMaxPos[pk]=s.pos;
     });
-    const ak=`${b.zone}-${b.aisle}`;
-    if(!aisleLevels[ak]) aisleLevels[ak]=new Set();
-    b.slots.forEach(s=>aisleLevels[ak].add(s.level));
   });
 
   // ── BL section ────────────────────────────────────────────────────────
@@ -582,32 +592,27 @@ function buildGrid(){
     const wmsSet=BL_WMS_LAYOUT[aisle]||new Set();
     const hasData=BAYS.some(b=>b.zone==='BL'&&b.aisle===aisle&&(tab.id==='Other'||getBLZone(b.aisle,b.bay)===tab.id))||wmsSet.size>0;
     if(!hasData) return;
-    const levels=Array.from(aisleLevels[`BL-${aisle}`]||new Set([1])).sort((a,b)=>a-b);
-    levels.forEach((lvl,li)=>{
-      const aisleLabel=li===0?`P${String(aisle).padStart(3,'0')}`:`<span style="color:#484f58">L${lvl}</span>`;
-      parts.push(`<div class="aisle-row" style="--rh:14px"><div class="aisle-lbl" style="font-size:${li===0?8:7}px">${aisleLabel}</div>`);
-      parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${tabMaxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
-      for(let bay=1;bay<=tabMaxBay;bay++){
-        const bayKey=`BL-${aisle}-${bay}`;
-        const slKey=`BL-${aisle}-${bay}-${lvl}`;
-        const sl=slotMap[slKey];
-        const inWMS=wmsSet.has(bay);
-        const bayExists=!!bayMap[bayKey];
-        if(sl){
-          const n=sl.skus.length;
-          const vd=bayExists&&VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
-          const bg=VIEW_MODE==='vol'?volColor(vd.pct):blSkuColor(n);
-          parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" data-slkey="${slKey}" title="${slKey}"></div>`);
-        }else if(bayExists){
-          parts.push(`<div class="bc empty bl-empty" data-key="${bayKey}" title="${bayKey} L${lvl}"></div>`);
-        }else if(inWMS){
-          parts.push(`<div class="bc empty bl-empty" data-key="${bayKey}" title="${bayKey} L${lvl} vacío"></div>`);
-        }else{
-          parts.push(`<div class="bc wms-gap"></div>`);
-        }
+    // BL: cada bay tiene 1 slot (level=0, pos=0) → 1 fila por pasillo
+    parts.push(`<div class="aisle-row" style="--rh:14px"><div class="aisle-lbl">P${String(aisle).padStart(3,'0')}</div>`);
+    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${tabMaxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
+    for(let bay=1;bay<=tabMaxBay;bay++){
+      const bayKey=`BL-${aisle}-${bay}`;
+      const slKey=`BL-${aisle}-${bay}-0-0`;
+      const sl=slotMap[slKey];
+      const inWMS=wmsSet.has(bay);
+      const bayExists=!!bayMap[bayKey];
+      if(sl){
+        const n=sl.skus.length;
+        const vd=VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
+        const bg=VIEW_MODE==='vol'?volColor(vd.pct):blSkuColor(n);
+        parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" title="${slKey}"></div>`);
+      }else if(bayExists||inWMS){
+        parts.push(`<div class="bc empty bl-empty" data-key="${bayKey}" title="${bayKey} vacío"></div>`);
+      }else{
+        parts.push(`<div class="bc wms-gap"></div>`);
       }
-      parts.push(`</div></div>`);
-    });
+    }
+    parts.push(`</div></div>`);
   });
   parts.push(`</div></div></div>`);
 
@@ -630,26 +635,33 @@ function buildGrid(){
     zd.aisles.forEach(aisle=>{
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      const levels=Array.from(aisleLevels[`${zd.zp}-${aisle}`]||new Set([1,2,3,4,5,6])).sort((a,b)=>a-b);
+      const levels=Array.from(aisleLevels[`${zd.zp}-${aisle}`]||new Set([1,2,3,4,5,6])).sort((a,b)=>b-a); // nivel 6 arriba → 1 abajo
       levels.forEach((lvl,li)=>{
-        const aisleLabel=li===0?`P${String(aisle).padStart(3,'0')}`:`<span style="color:#484f58">L${lvl}</span>`;
-        parts.push(`<div class="aisle-row" style="--rh:12px"><div class="aisle-lbl" style="font-size:${li===0?8:7}px">${aisleLabel}</div>`);
+        const isFirst=li===0;
+        const aisleLabel=isFirst?`P${String(aisle).padStart(3,'0')}`:`<span style="color:#484f58">L${lvl}</span>`;
+        parts.push(`<div class="aisle-row" style="--rh:13px"><div class="aisle-lbl" style="font-size:${isFirst?8:7}px">${aisleLabel}</div>`);
         parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px">`);
+        const maxPos=aisleMaxPos[`${zd.zp}-${aisle}-${lvl}`]||2;
         for(let bay=1;bay<=zd.maxBay;bay++){
           const bayKey=`${zd.zp}-${aisle}-${bay}`;
-          const slKey=`${zd.zp}-${aisle}-${bay}-${lvl}`;
-          const sl=slotMap[slKey];
           const bayExists=!!bayMap[bayKey];
-          if(sl){
-            const n=sl.skus.length;
-            const vd=bayExists&&VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
-            const bg=VIEW_MODE==='vol'?volColor(vd.pct):skuColor(n);
-            parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" data-slkey="${slKey}" title="${slKey}"></div>`);
-          }else if(bayExists){
-            parts.push(`<div class="bc empty" data-key="${bayKey}" title="${bayKey} L${lvl}"></div>`);
-          }else{
-            parts.push(`<div class="bc empty"></div>`);
+          // Contenedor del bay para este nivel — muestra P1|P2 como sub-cuadrados
+          parts.push(`<div class="rk-bc${selKey===bayKey?' sel':''}" data-key="${bayKey}">`);
+          for(let pos=1;pos<=maxPos;pos++){
+            const slKey=`${zd.zp}-${aisle}-${bay}-${lvl}-${pos}`;
+            const sl=slotMap[slKey];
+            if(sl){
+              const n=sl.skus.length;
+              const vd=bayExists&&VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
+              const bg=VIEW_MODE==='vol'?volColor(vd.pct):skuColor(n);
+              parts.push(`<div class="bc-pos ocp" style="background:${bg}" data-key="${bayKey}" data-slkey="${slKey}" title="${slKey}"></div>`);
+            }else if(bayExists){
+              parts.push(`<div class="bc-pos emp" data-key="${bayKey}" title="${bayKey} L${lvl}P${pos} vacío"></div>`);
+            }else{
+              parts.push(`<div class="bc-pos gap"></div>`);
+            }
           }
+          parts.push(`</div>`);
         }
         parts.push(`</div></div>`);
       });
@@ -721,12 +733,11 @@ mapwrap.addEventListener('mouseleave',()=>tip.classList.remove('vis'));
 mapwrap.addEventListener('click',e=>{
   const cell=e.target.closest('[data-key]');
   if(selKey){
-    const prev=document.querySelector(`[data-key="${CSS.escape(selKey)}"]`);
-    if(prev) prev.classList.remove('sel');
+    document.querySelectorAll(`[data-key="${CSS.escape(selKey)}"]`).forEach(el=>el.classList.remove('sel'));
   }
   if(!cell||cell.dataset.key===selKey){ selKey=null; renderDetail(null,null); return; }
   selKey=cell.dataset.key;
-  cell.classList.add('sel');
+  document.querySelectorAll(`[data-key="${CSS.escape(selKey)}"]`).forEach(el=>el.classList.add('sel'));
   renderDetail(bayMap[selKey],selKey);
 });
 
