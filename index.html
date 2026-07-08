@@ -343,9 +343,15 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 <div id="tip"></div>
 <script>
 // ── Colores ────────────────────────────────────────────────────────────────
-const SKU_COLORS=['#0d1117','#1a4a2e','#2d7a4a','#5aab6e','#e3b341','#d07030','#f85149','#ff2222'];
-function skuColor(n){ return n<=0?SKU_COLORS[0]:n>=7?SKU_COLORS[7]:SKU_COLORS[n]; }
-function blSkuColor(n){ return n<=0?SKU_COLORS[0]:n===1?SKU_COLORS[3]:n<=3?SKU_COLORS[5]:SKU_COLORS[7]; }
+// 0=vacío  1=verde  2=amarillo  3=naranja  4+=rojo
+function skuColor(n){
+  if(n<=0) return '#111820';
+  if(n===1) return '#3fb950';  // verde
+  if(n===2) return '#e3b341';  // amarillo
+  if(n===3) return '#d07030';  // naranja
+  return '#f85149';            // rojo (4+)
+}
+function blSkuColor(n){ return skuColor(n); }
 
 // ── Tabs BL ────────────────────────────────────────────────────────────────
 const BL_TABS = [
