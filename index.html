@@ -526,48 +526,48 @@ function buildGrid(){
 
   // slotMap: "ZONE-aisle-bay-level-pos" → slot (individual bin)
   const slotMap={};
-  // levelPosMap: "ZONE-aisle" → sorted array de {level,pos}
-  const aisleSlotRows={};
   BAYS.forEach(b=>{
     b.slots.forEach(s=>{
-      const sk=`${b.zone}-${b.aisle}-${b.bay}-${s.level}-${s.pos}`;
-      slotMap[sk]={skus:s.skus,id:s.id,level:s.level,pos:s.pos};
-      const ak=`${b.zone}-${b.aisle}`;
-      if(!aisleSlotRows[ak]) aisleSlotRows[ak]=new Map();
-      aisleSlotRows[ak].set(`${s.level}-${s.pos}`,{level:s.level,pos:s.pos});
+      slotMap[`${b.zone}-${b.aisle}-${b.bay}-${s.level}-${s.pos}`]={skus:s.skus,id:s.id};
     });
   });
-  // Ordenar filas: nivel desc (6→1), pos asc (1→2)
-  Object.keys(aisleSlotRows).forEach(ak=>{
-    aisleSlotRows[ak]=Array.from(aisleSlotRows[ak].values())
-      .sort((a,b)=>b.level-a.level||a.pos-b.pos);
-  });
 
-  // helper para renderizar una fila de bins individuales
-  function renderSlotRow(zoneKey, aisle, bay1, bayMax, lvl, pos, gridW, gridCols, isAisleFirst){
-    const rowLabel=isAisleFirst
-      ? `P${String(aisle).padStart(3,'0')}`
-      : `<span style="color:#6e7681;font-size:6px">L${lvl}·${pos}</span>`;
-    parts.push(`<div class="aisle-row" style="--rh:11px"><div class="aisle-lbl" style="font-size:${isAisleFirst?8:6}px">${rowLabel}</div>`);
-    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${gridCols},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
-    for(let bay=bay1;bay<=bayMax;bay++){
-      const bayKey=`${zoneKey}-${aisle}-${bay}`;
-      const slKey=`${zoneKey}-${aisle}-${bay}-${lvl}-${pos}`;
+  // Filas fijas por zona: RK = L6P1,L6P2,...,L1P1,L1P2 (12 filas); BL = L0P0 (1 fila)
+  const RK_ROWS=[];
+  for(let l=6;l>=1;l--) for(let p=1;p<=2;p++) RK_ROWS.push({level:l,pos:p,label:`L${l}·P${p}`});
+  const BL_ROWS=[{level:0,pos:0,label:''}];
+
+  // Renderiza UNA fila de bins: una celda por bay
+  function renderRow(zone, aisle, bayMax, lvl, pos, label, gridW, isBL){
+    const lbl=label
+      ? `<span style="color:#6e7681;font-size:6px;font-family:monospace">${label}</span>`
+      : `<span style="color:#484f58;font-size:8px;font-family:monospace">P${String(aisle).padStart(3,'0')}</span>`;
+    parts.push(`<div class="aisle-row" style="--rh:11px"><div class="aisle-lbl">${lbl}</div>`);
+    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${bayMax},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
+    for(let bay=1;bay<=bayMax;bay++){
+      const bayKey=`${zone}-${aisle}-${bay}`;
+      const slKey=`${zone}-${aisle}-${bay}-${lvl}-${pos}`;
       const sl=slotMap[slKey];
       const bayExists=!!bayMap[bayKey];
       if(sl){
         const n=sl.skus.length;
-        const bg=zoneKey==='BL'?blSkuColor(n):skuColor(n);
-        if(VIEW_MODE==='vol'&&bayExists){const vd=bayVolData(bayMap[bayKey]);parts.push(`<div class="bc" style="background:${volColor(vd.pct)}" data-key="${bayKey}" title="${slKey}"></div>`);}
-        else parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" title="${slKey}"></div>`);
+        const bg=isBL?blSkuColor(n):skuColor(n);
+        const bgFinal=VIEW_MODE==='vol'&&bayExists?volColor(bayVolData(bayMap[bayKey]).pct):bg;
+        parts.push(`<div class="bc" style="background:${bgFinal}" data-key="${bayKey}" title="${slKey}"></div>`);
       }else if(bayExists){
-        const cls=zoneKey==='BL'?'bc empty bl-empty':'bc empty';
-        parts.push(`<div class="${cls}" data-key="${bayKey}" title="${slKey} vacío"></div>`);
+        parts.push(`<div class="${isBL?'bc empty bl-empty':'bc empty'}" data-key="${bayKey}"></div>`);
       }else{
         parts.push(`<div class="bc wms-gap"></div>`);
       }
     }
     parts.push(`</div></div>`);
+  }
+
+  // Separador entre pasillos
+  function aisleHeader(label){
+    parts.push(`<div style="display:flex;align-items:center;height:14px;margin:2px 0 0 0">`);
+    parts.push(`<div style="width:62px;flex-shrink:0;font-size:9px;font-weight:700;color:#58a6ff;font-family:monospace;text-align:right;padding-right:7px">${label}</div>`);
+    parts.push(`<div style="flex:1;height:1px;background:#21262d"></div></div>`);
   }
 
   // ── BL section ────────────────────────────────────────────────────────
@@ -618,8 +618,8 @@ function buildGrid(){
     const wmsSet=BL_WMS_LAYOUT[aisle]||new Set();
     const hasData=BAYS.some(b=>b.zone==='BL'&&b.aisle===aisle&&(tab.id==='Other'||getBLZone(b.aisle,b.bay)===tab.id))||wmsSet.size>0;
     if(!hasData) return;
-    const rows=aisleSlotRows[`BL-${aisle}`]||[{level:0,pos:0}];
-    rows.forEach((r,ri)=>renderSlotRow('BL',aisle,1,tabMaxBay,r.level,r.pos,gridW,tabMaxBay,ri===0));
+    // BL: 1 fila por pasillo (slot único L0·P0)
+    renderRow('BL',aisle,tabMaxBay,0,0,'',gridW,true);
   });
   parts.push(`</div></div></div>`);
 
@@ -642,10 +642,10 @@ function buildGrid(){
     zd.aisles.forEach(aisle=>{
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      const rows=aisleSlotRows[`${zd.zp}-${aisle}`]||[{level:1,pos:1}];
-      rows.forEach((r,ri)=>renderSlotRow(zd.zp,aisle,1,zd.maxBay,r.level,r.pos,gridW2,zd.maxBay,ri===0));
-      // separador visual entre pasillos
-      parts.push(`<div style="height:3px"></div>`);
+      // Header de pasillo
+      aisleHeader(`P${String(aisle).padStart(3,'0')}`);
+      // RK: 12 filas fijas (L6P1, L6P2, ..., L1P1, L1P2)
+      RK_ROWS.forEach(r=>renderRow(zd.zp,aisle,zd.maxBay,r.level,r.pos,r.label,gridW2,false));
     });
     parts.push(`</div></div></div></div>`);
   });
