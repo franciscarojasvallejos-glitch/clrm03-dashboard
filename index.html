@@ -521,26 +521,54 @@ function setBLTab(id){ blTab=id; buildGrid(); if(selKey&&bayMap[selKey]){documen
 
 // ── Build Grid ────────────────────────────────────────────────────────────
 function buildGrid(){
-  const CELL_MIN=14;
+  const CELL_MIN=10;
   const parts=[];
 
-  // slotMap: "ZONE-aisle-bay-level-pos" → slot obj (completamente individual)
+  // slotMap: "ZONE-aisle-bay-level-pos" → slot (individual bin)
   const slotMap={};
-  // aisleLevels: "ZONE-aisle" → Set de levels
-  const aisleLevels={};
-  // maxPos por zona-pasillo-nivel: "ZONE-aisle-level" → max pos
-  const aisleMaxPos={};
+  // levelPosMap: "ZONE-aisle" → sorted array de {level,pos}
+  const aisleSlotRows={};
   BAYS.forEach(b=>{
     b.slots.forEach(s=>{
       const sk=`${b.zone}-${b.aisle}-${b.bay}-${s.level}-${s.pos}`;
       slotMap[sk]={skus:s.skus,id:s.id,level:s.level,pos:s.pos};
       const ak=`${b.zone}-${b.aisle}`;
-      if(!aisleLevels[ak]) aisleLevels[ak]=new Set();
-      aisleLevels[ak].add(s.level);
-      const pk=`${b.zone}-${b.aisle}-${s.level}`;
-      if(!aisleMaxPos[pk]||s.pos>aisleMaxPos[pk]) aisleMaxPos[pk]=s.pos;
+      if(!aisleSlotRows[ak]) aisleSlotRows[ak]=new Map();
+      aisleSlotRows[ak].set(`${s.level}-${s.pos}`,{level:s.level,pos:s.pos});
     });
   });
+  // Ordenar filas: nivel desc (6→1), pos asc (1→2)
+  Object.keys(aisleSlotRows).forEach(ak=>{
+    aisleSlotRows[ak]=Array.from(aisleSlotRows[ak].values())
+      .sort((a,b)=>b.level-a.level||a.pos-b.pos);
+  });
+
+  // helper para renderizar una fila de bins individuales
+  function renderSlotRow(zoneKey, aisle, bay1, bayMax, lvl, pos, gridW, gridCols, isAisleFirst){
+    const rowLabel=isAisleFirst
+      ? `P${String(aisle).padStart(3,'0')}`
+      : `<span style="color:#6e7681;font-size:6px">L${lvl}·${pos}</span>`;
+    parts.push(`<div class="aisle-row" style="--rh:11px"><div class="aisle-lbl" style="font-size:${isAisleFirst?8:6}px">${rowLabel}</div>`);
+    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${gridCols},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
+    for(let bay=bay1;bay<=bayMax;bay++){
+      const bayKey=`${zoneKey}-${aisle}-${bay}`;
+      const slKey=`${zoneKey}-${aisle}-${bay}-${lvl}-${pos}`;
+      const sl=slotMap[slKey];
+      const bayExists=!!bayMap[bayKey];
+      if(sl){
+        const n=sl.skus.length;
+        const bg=zoneKey==='BL'?blSkuColor(n):skuColor(n);
+        if(VIEW_MODE==='vol'&&bayExists){const vd=bayVolData(bayMap[bayKey]);parts.push(`<div class="bc" style="background:${volColor(vd.pct)}" data-key="${bayKey}" title="${slKey}"></div>`);}
+        else parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" title="${slKey}"></div>`);
+      }else if(bayExists){
+        const cls=zoneKey==='BL'?'bc empty bl-empty':'bc empty';
+        parts.push(`<div class="${cls}" data-key="${bayKey}" title="${slKey} vacío"></div>`);
+      }else{
+        parts.push(`<div class="bc wms-gap"></div>`);
+      }
+    }
+    parts.push(`</div></div>`);
+  }
 
   // ── BL section ────────────────────────────────────────────────────────
   const tab=BL_TABS.find(t=>t.id===blTab)||BL_TABS[0];
@@ -557,9 +585,8 @@ function buildGrid(){
   });
   tabMaxBay=tabMaxBay||50;
   const tabStep=tabMaxBay>100?20:tabMaxBay>40?10:5;
-  const gridW=Math.max(tabMaxBay*(CELL_MIN+2),200);
+  const gridW=Math.max(tabMaxBay*(CELL_MIN+1),200);
 
-  // pre-computar stats del tab
   let tabOcc=0,tabTot=0,tabBays=0,tabEmpty=0;
   BAYS.forEach(b=>{
     if(b.zone!=='BL'||!tabAisleSet.has(b.aisle)) return;
@@ -580,8 +607,7 @@ function buildGrid(){
     const active=t.id===blTab;
     parts.push(`<button class="bl-tab-btn ${active?'bl-tab-active':''}" style="color:${active?t.color:''};" onclick="setBLTab('${t.id}')">${t.label}</button>`);
   });
-  parts.push(`</div>`);
-  parts.push(`<div class="bl-tab-content">`);
+  parts.push(`</div><div class="bl-tab-content">`);
   parts.push(`<div style="font-size:9px;color:#484f58;margin-bottom:6px">${tabPct}% ocupación · ${tabBays} bays · ${tabMaxBay} cols &nbsp;·&nbsp; <span style="color:#4da6ff;font-weight:600">${tabEmpty} vacías</span> · <span style="color:#4da6ff">${tabDispPct}% disponibles</span></div>`);
   parts.push(`<div class="zone-scroll">`);
   parts.push(`<div class="bay-axis-row"><div class="axis-lbl-spacer"></div>`);
@@ -592,27 +618,8 @@ function buildGrid(){
     const wmsSet=BL_WMS_LAYOUT[aisle]||new Set();
     const hasData=BAYS.some(b=>b.zone==='BL'&&b.aisle===aisle&&(tab.id==='Other'||getBLZone(b.aisle,b.bay)===tab.id))||wmsSet.size>0;
     if(!hasData) return;
-    // BL: cada bay tiene 1 slot (level=0, pos=0) → 1 fila por pasillo
-    parts.push(`<div class="aisle-row" style="--rh:14px"><div class="aisle-lbl">P${String(aisle).padStart(3,'0')}</div>`);
-    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${tabMaxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
-    for(let bay=1;bay<=tabMaxBay;bay++){
-      const bayKey=`BL-${aisle}-${bay}`;
-      const slKey=`BL-${aisle}-${bay}-0-0`;
-      const sl=slotMap[slKey];
-      const inWMS=wmsSet.has(bay);
-      const bayExists=!!bayMap[bayKey];
-      if(sl){
-        const n=sl.skus.length;
-        const vd=VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
-        const bg=VIEW_MODE==='vol'?volColor(vd.pct):blSkuColor(n);
-        parts.push(`<div class="bc" style="background:${bg}" data-key="${bayKey}" title="${slKey}"></div>`);
-      }else if(bayExists||inWMS){
-        parts.push(`<div class="bc empty bl-empty" data-key="${bayKey}" title="${bayKey} vacío"></div>`);
-      }else{
-        parts.push(`<div class="bc wms-gap"></div>`);
-      }
-    }
-    parts.push(`</div></div>`);
+    const rows=aisleSlotRows[`BL-${aisle}`]||[{level:0,pos:0}];
+    rows.forEach((r,ri)=>renderSlotRow('BL',aisle,1,tabMaxBay,r.level,r.pos,gridW,tabMaxBay,ri===0));
   });
   parts.push(`</div></div></div>`);
 
@@ -623,7 +630,7 @@ function buildGrid(){
     return tot>0?`${Math.round(occ/tot*100)}% occ · ${BAYS.filter(b=>b.zone===zd.zp&&zd.aisles.includes(b.aisle)).length} bays`:'—';
   }
   ZONE_DEFS.forEach(zd=>{
-    const gridW2=Math.max(zd.maxBay*(CELL_MIN+2),200);
+    const gridW2=Math.max(zd.maxBay*(CELL_MIN+1),200);
     const collapsed=!openZones.has(zd.id)?'collapsed':'';
     parts.push(`<div class="zone-section ${collapsed}" id="zs-${zd.id}">`);
     parts.push(`<div class="zone-hdr" onclick="toggleZone('${zd.id}')"><span style="color:${zd.color}">${zd.label}</span><span style="font-weight:400;color:#484f58;font-size:9px;margin-left:auto">${zoneMeta(zd)}</span></div>`);
@@ -635,36 +642,10 @@ function buildGrid(){
     zd.aisles.forEach(aisle=>{
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      const levels=Array.from(aisleLevels[`${zd.zp}-${aisle}`]||new Set([1,2,3,4,5,6])).sort((a,b)=>b-a); // nivel 6 arriba → 1 abajo
-      levels.forEach((lvl,li)=>{
-        const isFirst=li===0;
-        const aisleLabel=isFirst?`P${String(aisle).padStart(3,'0')}`:`<span style="color:#484f58">L${lvl}</span>`;
-        parts.push(`<div class="aisle-row" style="--rh:13px"><div class="aisle-lbl" style="font-size:${isFirst?8:7}px">${aisleLabel}</div>`);
-        parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px">`);
-        const maxPos=aisleMaxPos[`${zd.zp}-${aisle}-${lvl}`]||2;
-        for(let bay=1;bay<=zd.maxBay;bay++){
-          const bayKey=`${zd.zp}-${aisle}-${bay}`;
-          const bayExists=!!bayMap[bayKey];
-          // Contenedor del bay para este nivel — muestra P1|P2 como sub-cuadrados
-          parts.push(`<div class="rk-bc${selKey===bayKey?' sel':''}" data-key="${bayKey}">`);
-          for(let pos=1;pos<=maxPos;pos++){
-            const slKey=`${zd.zp}-${aisle}-${bay}-${lvl}-${pos}`;
-            const sl=slotMap[slKey];
-            if(sl){
-              const n=sl.skus.length;
-              const vd=bayExists&&VIEW_MODE==='vol'?bayVolData(bayMap[bayKey]):{pct:0};
-              const bg=VIEW_MODE==='vol'?volColor(vd.pct):skuColor(n);
-              parts.push(`<div class="bc-pos ocp" style="background:${bg}" data-key="${bayKey}" data-slkey="${slKey}" title="${slKey}"></div>`);
-            }else if(bayExists){
-              parts.push(`<div class="bc-pos emp" data-key="${bayKey}" title="${bayKey} L${lvl}P${pos} vacío"></div>`);
-            }else{
-              parts.push(`<div class="bc-pos gap"></div>`);
-            }
-          }
-          parts.push(`</div>`);
-        }
-        parts.push(`</div></div>`);
-      });
+      const rows=aisleSlotRows[`${zd.zp}-${aisle}`]||[{level:1,pos:1}];
+      rows.forEach((r,ri)=>renderSlotRow(zd.zp,aisle,1,zd.maxBay,r.level,r.pos,gridW2,zd.maxBay,ri===0));
+      // separador visual entre pasillos
+      parts.push(`<div style="height:3px"></div>`);
     });
     parts.push(`</div></div></div></div>`);
   });
