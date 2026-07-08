@@ -264,7 +264,14 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
       <div id="sug-sku-items"><div style="padding:16px;color:#484f58;font-size:10px">Cargando inventario…</div></div>
     </div>
     <div id="sug-results">
-      <div id="sug-empty">
+      <div id="sug-cola-wrap">
+        <div style="font-size:10px;font-weight:700;color:#f85149;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+          🚨 Cola de Putaway Pendiente
+          <span style="font-size:8px;color:#484f58;font-weight:400">ordenada por urgencia SLA</span>
+        </div>
+        <div id="sug-cola"><div style="color:#484f58;font-size:10px">Cargando…</div></div>
+      </div>
+      <div id="sug-empty" style="display:none">
         🔍 Busca un SKU o producto para ver<br>sugerencias de dónde guardarlo<br>
         <span style="font-size:10px;color:#30363d">basado en volumetría y afinidad de producto</span>
       </div>
@@ -1015,45 +1022,134 @@ function invSelSKU(sku){
 // ── Sugerencias de Guardado ───────────────────────────────────────────────
 let SUG_READY=false, SUG_SKUS=[], SUG_SLOTS=[], SUG_SEL=null;
 
+// ── Scoring unificado ─────────────────────────────────────────────────────
+function scoreSugerencia(sl, targetSKU, targetDom, targetBrand){
+  let score=0; const tags=[];
+
+  // Consolidación mismo SKU → máxima prioridad
+  if(sl.skus.includes(targetSKU)){
+    score+=100; tags.push({cls:'sug-tag-exact',txt:'✓ Consolida mismo SKU'});
+  }else{
+    // Misma categoría
+    const slDoms=sl.skus.map(sk=>(CATALOG[sk]||{}).domain||'').filter(Boolean);
+    if(targetDom && slDoms.includes(targetDom)){ score+=30; tags.push({cls:'sug-tag-dom',txt:'Misma categoría'}); }
+    // Misma marca
+    const slBrands=sl.skus.map(sk=>(CATALOG[sk]||{}).brand||'').filter(Boolean);
+    if(targetBrand && slBrands.includes(targetBrand)){ score+=20; tags.push({cls:'sug-tag-brand',txt:'Misma marca'}); }
+  }
+
+  // Espacio disponible (volumen)
+  const pct=sl.pct_vol||0;
+  score+=Math.round((100-pct)*0.35);
+  if(!tags.length) tags.push({cls:'sug-tag-space',txt:'Espacio disponible'});
+
+  // Ubicación vacía: bonus leve
+  if(sl.num_skus===0){ score+=8; }
+
+  // Penalidades
+  if(sl.limite_skus!==null && sl.num_skus>=sl.limite_skus-1){ score-=40; tags.push({cls:'sug-tag-warn',txt:'⚠ Casi al límite SKUs'}); }
+  if(pct>=90){ score-=30; tags.push({cls:'sug-tag-warn',txt:'⚠ Vol. casi lleno'}); }
+
+  const stars=score>=120?'★★★':score>=70?'★★☆':'★☆☆';
+  return {score,tags,stars};
+}
+
 function buildSugIndex(){
-  // Build SKU list from BAYS
   const skuMap={};
   BAYS.forEach(b=>{
     b.slots.forEach(s=>{
       if(!s.skus) return;
       s.skus.forEach(sk=>{
-        if(!skuMap[sk]) skuMap[sk]={sku:sk, locs:0, qty:0};
+        if(!skuMap[sk]) skuMap[sk]={sku:sk,locs:0,qty:0};
         skuMap[sk].locs++;
         skuMap[sk].qty+=(s.qty||0);
       });
     });
   });
-  SUG_SKUS = Object.values(skuMap).map(o=>{
+  SUG_SKUS=Object.values(skuMap).map(o=>{
     const cat=CATALOG[o.sku]||{};
-    return {...o, title:cat.title||'', brand:cat.brand||'', domain:cat.domain||cat.category||''};
+    return {...o,title:cat.title||'',brand:cat.brand||'',domain:cat.domain||cat.category||''};
   }).sort((a,b)=>b.locs-a.locs);
 
-  // Build slot list for suggestions (with space available)
-  SUG_SLOTS = [];
+  SUG_SLOTS=[];
   BAYS.forEach(b=>{
     b.slots.forEach(s=>{
       const v=VOLDATA[s.id];
-      const pct = v ? v.pct_vol : null;
-      const limSkus = v ? v.limite_skus : null;
-      const numSkus = s.skus ? s.skus.length : 0;
-      if(limSkus!==null && numSkus>=limSkus) return; // al límite
-      if(pct!==null && pct>=98) return; // lleno
-      SUG_SLOTS.push({
-        id:s.id, area:b.area||'RK', bay:b.id||'',
-        skus:s.skus||[], qty:s.qty||0,
-        pct_vol:pct, limite_skus:limSkus, num_skus:numSkus
-      });
+      const pct=v?v.pct_vol:null;
+      const limSkus=v?v.limite_skus:null;
+      const numSkus=s.skus?s.skus.length:0;
+      if(limSkus!==null && numSkus>=limSkus) return;
+      if(pct!==null && pct>=98) return;
+      SUG_SLOTS.push({id:s.id,area:b.area||b.zone||'RK',skus:s.skus||[],qty:s.qty||0,pct_vol:pct,limite_skus:limSkus,num_skus:numSkus});
     });
   });
 
-  renderSKUList(SUG_SKUS);
   SUG_READY=true;
   document.getElementById('sug-status').textContent=`${SUG_SKUS.length.toLocaleString()} SKUs · ${SUG_SLOTS.length.toLocaleString()} ubicaciones disponibles`;
+  renderSKUList(SUG_SKUS);
+  renderColaPendiente();
+}
+
+// ── Cola de pendientes ordenada por urgencia SLA ──────────────────────────
+function renderColaPendiente(){
+  const el=document.getElementById('sug-cola');
+  if(!el) return;
+  if(!SUG_READY){ el.innerHTML='<div style="color:#484f58;font-size:10px;padding:8px">Cargando índice…</div>'; return; }
+
+  // Filtrar pendientes (excluir done) y ordenar: over primero, luego warn, luego ok; dentro de cada grupo por mins_restantes asc
+  const urgOrder={'over':0,'warn':1,'ok':2,'pw_active':3,'unknown':4};
+  const pending=CHK_DATA
+    .filter(o=>o.sla!=='done')
+    .sort((a,b)=>{
+      const ua=urgOrder[a.sla]??9, ub=urgOrder[b.sla]??9;
+      if(ua!==ub) return ua-ub;
+      return (a.mins_restantes??9999)-(b.mins_restantes??9999);
+    });
+
+  if(!pending.length){
+    el.innerHTML='<div style="color:#3fb950;font-size:11px;padding:16px;text-align:center">✓ Sin items pendientes de putaway</div>';
+    return;
+  }
+
+  el.innerHTML=pending.slice(0,50).map(o=>{
+    const cat=CATALOG[o.sku]||{};
+    const entry={sku:o.sku,domain:cat.domain||cat.category||'',brand:cat.brand||''};
+    const top3=SUG_SLOTS.map(sl=>{
+      const {score,tags,stars}=scoreSugerencia(sl,o.sku,entry.domain,entry.brand);
+      return {...sl,score,tags,stars};
+    }).sort((a,b)=>b.score-a.score).slice(0,3);
+
+    const urgBorder=o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':'#30363d';
+    const imgId=`cola-img-${(o.sku||'').replace(/[^a-z0-9]/gi,'_')}`;
+    if(cat.item_id) setTimeout(()=>fetchMeliImg(cat.item_id,imgId),200);
+
+    return `<div style="border:1px solid ${urgBorder};border-radius:6px;padding:8px;margin-bottom:6px;background:#161b22">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        ${cat.img||cat.item_id?`<img id="${imgId}" src="${cat.img||''}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;background:#0d1117;border:1px solid #30363d;flex-shrink:0" onerror="this.style.display='none'">`:''}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:monospace;font-size:10px;font-weight:700;color:#58a6ff">${o.sku}</div>
+          <div style="font-size:9px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat.title||'—'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${chkSlaLabel(o)}
+          <div style="font-size:8px;color:#484f58;margin-top:2px">Qty: <b style="color:#e3b341">${o.qty_chk||o.qty_dec||0}</b></div>
+        </div>
+      </div>
+      <div style="font-size:8px;color:#484f58;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">📍 Top ubicaciones:</div>
+      ${top3.map((sl,i)=>`
+        <div style="display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;background:#0d1117;margin-bottom:2px;font-size:9px">
+          <span style="color:#484f58;min-width:12px">${i+1}.</span>
+          <span style="font-family:monospace;color:#c9d1d9;font-weight:700;flex:1">${sl.id}</span>
+          <span style="color:#484f58">${sl.area}</span>
+          <span style="color:${volColor(sl.pct_vol||0)}">${sl.pct_vol!=null?sl.pct_vol+'%':'—'}</span>
+          <span style="color:#e3b341">${sl.stars}</span>
+          <span style="color:#484f58">${sl.tags[0]?.txt||''}</span>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+  if(pending.length>50){
+    el.innerHTML+=`<div style="text-align:center;color:#484f58;font-size:9px;padding:8px">Mostrando 50 de ${pending.length} pendientes</div>`;
+  }
 }
 
 function renderSKUList(list){
@@ -1101,49 +1197,11 @@ function buscarSugerencia(){
   const targetDom   = entry.domain;
   const targetBrand = entry.brand;
 
-  // Score each available slot
+  // Score cada slot con función unificada
   const scored = SUG_SLOTS.map(sl=>{
-    let score=0;
-    const tags=[];
-
-    // Vol score: mejor espacio disponible
-    const pct=sl.pct_vol||0;
-    score += Math.round((100-pct)*0.4);
-
-    // Afinidad: mismo SKU (consolidar)
-    if(sl.skus.includes(targetSKU)){
-      score+=50;
-      tags.push({cls:'sug-tag-exact',txt:'Ya tiene este SKU'});
-    }
-
-    // Afinidad: mismo domain/categoria
-    const slDomains=sl.skus.map(sk=>(CATALOG[sk]||{}).domain||'').filter(Boolean);
-    if(targetDom && slDomains.some(d=>d===targetDom)){
-      score+=30;
-      tags.push({cls:'sug-tag-dom',txt:'Misma categoría'});
-    }
-
-    // Afinidad: misma brand
-    const slBrands=sl.skus.map(sk=>(CATALOG[sk]||{}).brand||'').filter(Boolean);
-    if(targetBrand && slBrands.some(b=>b===targetBrand)){
-      score+=20;
-      tags.push({cls:'sug-tag-brand',txt:'Misma marca'});
-    }
-
-    // Espacio libre
-    if(!tags.length) tags.push({cls:'sug-tag-space',txt:'Espacio disponible'});
-
-    // Penalidad si al límite o muy lleno
-    if(sl.limite_skus!==null && sl.num_skus>=sl.limite_skus-1)
-      tags.push({cls:'sug-tag-warn',txt:'Casi al límite de SKUs'});
-    if(pct>=90)
-      tags.push({cls:'sug-tag-warn',txt:'Volumen casi lleno'});
-
-    const stars = score>=100?'★★★':score>=60?'★★☆':'★☆☆';
-    return {...sl, score, tags, stars};
-  });
-
-  scored.sort((a,b)=>b.score-a.score);
+    const {score,tags,stars}=scoreSugerencia(sl,targetSKU,targetDom,targetBrand);
+    return {...sl,score,tags,stars};
+  }).sort((a,b)=>b.score-a.score);
   const top=scored.slice(0,15);
 
   res.innerHTML=`
@@ -1198,6 +1256,7 @@ async function loadCheckin(){
     document.getElementById('ck-done').textContent=(s.done||0).toLocaleString();
     document.getElementById('ck-upd').textContent=d.updated||'—';
     chkRender();
+    if(SUG_READY) renderColaPendiente();
   }catch(e){}
 }
 
@@ -1298,30 +1357,22 @@ function chkSelItem(o){
   // Sugerencias de putaway si está pendiente
   let sugHtml = '';
   if(o.sla!=='done' && SUG_READY && o.sku){
-    const entry=SUG_SKUS.find(x=>x.sku===o.sku)||{sku:o.sku,domain:'',brand:''};
+    const cat2=CATALOG[o.sku]||{};
+    const entry={sku:o.sku,domain:cat2.domain||cat2.category||'',brand:cat2.brand||''};
     const scored=SUG_SLOTS.map(sl=>{
-      let sc=Math.round((100-(sl.pct_vol||0))*0.4);
-      const tags=[];
-      if(sl.skus.includes(o.sku)){sc+=50;tags.push('Ya tiene este SKU');}
-      else {
-        const slDoms=sl.skus.map(sk=>(CATALOG[sk]||{}).domain||'').filter(Boolean);
-        if(entry.domain && slDoms.includes(entry.domain)){sc+=30;tags.push('Misma categoría');}
-        const slBrands=sl.skus.map(sk=>(CATALOG[sk]||{}).brand||'').filter(Boolean);
-        if(entry.brand && slBrands.includes(entry.brand)){sc+=20;tags.push('Misma marca');}
-        if(!tags.length) tags.push('Espacio libre');
-      }
-      return {...sl,sc,tags};
-    }).sort((a,b)=>b.sc-a.sc).slice(0,5);
+      const {score,tags,stars}=scoreSugerencia(sl,o.sku,entry.domain,entry.brand);
+      return {...sl,score,tags,stars};
+    }).sort((a,b)=>b.score-a.score).slice(0,5);
 
     sugHtml=`<div style="font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 6px">📍 Sugerencias de putaway</div>
     ${scored.map((sl,i)=>`
       <div class="chk-sug-card">
-        <div class="chk-sug-addr">${i+1}. ${sl.id}</div>
+        <div class="chk-sug-addr">${i+1}. ${sl.id} <span style="color:#e3b341;margin-left:4px">${sl.stars}</span></div>
         <div class="chk-sug-meta">
           <span class="inv-area-tag inv-area-${(sl.area||'').toLowerCase()}">${sl.area}</span>
           ${sl.pct_vol!=null?`<span>Vol: <b style="color:${volColor(sl.pct_vol)}">${sl.pct_vol}%</b></span>`:''}
-          <span>${sl.tags.join(' · ')}</span>
-          <span style="margin-left:auto;color:#e3b341;font-weight:700">${sl.sc}pts</span>
+          <span>${sl.tags.map(t=>t.txt).join(' · ')}</span>
+          <span style="margin-left:auto;color:#e3b341;font-weight:700">${sl.score}pts</span>
         </div>
       </div>`).join('')}`;
   } else if(o.estado && o.estado!=='pendiente'){
