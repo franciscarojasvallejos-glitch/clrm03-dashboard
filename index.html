@@ -552,9 +552,11 @@ function buildGrid(){
     });
   });
 
-  // Filas fijas por zona: RK = L6P1,L6P2,...,L1P1,L1P2 (12 filas); BL = L0P0 (1 fila)
+  // Filas dinámicas: derivadas de los datos reales del WMS (no hardcoded)
+  const rkLvlPos={};
+  BAYS.forEach(b=>{ if(b.zone!=='RK') return; b.slots.forEach(s=>{ if(!rkLvlPos[s.level]) rkLvlPos[s.level]=new Set(); rkLvlPos[s.level].add(s.pos); }); });
   const RK_ROWS=[];
-  for(let l=6;l>=1;l--) for(let p=1;p<=2;p++) RK_ROWS.push({level:l,pos:p,label:`L${l}·P${p}`});
+  Object.keys(rkLvlPos).map(Number).sort((a,b)=>b-a).forEach(l=>{ [...rkLvlPos[l]].sort((a,b)=>a-b).forEach(p=>RK_ROWS.push({level:l,pos:p,label:`L${l}·P${p}`})); });
   const BL_ROWS=[{level:0,pos:0,label:''}];
 
   // Renderiza UNA fila de bins: una celda por bay
