@@ -218,12 +218,16 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     <span style="font-size:9px;opacity:.7">⏱</span> Auto <span id="ref-cd">60</span>s
   </div>
   <div id="kpis">
-    <div><div class="kv c-blue" id="k-bays">—</div><div class="kl">Bays Ocup.</div></div>
-    <div><div class="kv c-blue" id="k-slots">—</div><div class="kl">Slots</div></div>
+    <div><div class="kv c-blue" id="k-slots">—</div><div class="kl">Ubic. Totales</div></div>
+    <div><div class="kv c-blue" id="k-bays">—</div><div class="kl">Ubic. Ocup.</div></div>
     <div class="hsep"></div>
-    <div><div class="kv c-ok" id="k-pct">—</div><div class="kl">Ocupación</div></div>
-    <div><div class="kv c-warn" id="k-avg">—</div><div class="kl">SKUs/Slot</div></div>
-    <div><div class="kv c-bad" id="k-full">—</div><div class="kl">RK ≥6 SKUs</div></div>
+    <div title="Ubicaciones con al menos 1 SKU / total ubicaciones"><div class="kv c-ok" id="k-pct">—</div><div class="kl">% Ocupación</div></div>
+    <div title="Ubicaciones con más de 1 SKU / ubicaciones ocupadas"><div class="kv c-warn" id="k-pct-multi">—</div><div class="kl">% Multi-SKU</div></div>
+    <div class="hsep"></div>
+    <div title="Ubicaciones con exactamente 1 SKU"><div class="kv c-ok" id="k-locs-1" style="font-size:13px">—</div><div class="kl">1 SKU</div></div>
+    <div title="Ubicaciones con 2 SKUs"><div class="kv c-warn" id="k-locs-2" style="font-size:13px">—</div><div class="kl">2 SKUs</div></div>
+    <div title="Ubicaciones con 3 SKUs"><div class="kv" id="k-locs-3" style="font-size:13px;color:#d07030">—</div><div class="kl">3 SKUs</div></div>
+    <div title="Ubicaciones con 4 o más SKUs"><div class="kv c-bad" id="k-locs-4p" style="font-size:13px">—</div><div class="kl">4+ SKUs</div></div>
     <div class="hsep"></div>
     <div><div class="kv" id="k-bl-over" style="color:#f85149">—</div><div class="kl">BL &gt;1 SKU</div></div>
     <div class="hsep"></div>
@@ -513,12 +517,15 @@ async function loadData(){
 // ── KPIs ──────────────────────────────────────────────────────────────────
 function renderKPIs(){
   const s=DAY.stats||{};
-  document.getElementById('hupd').textContent   =DAY.updated||'—';
-  document.getElementById('k-bays').textContent =(s.total_bays||0).toLocaleString();
-  document.getElementById('k-slots').textContent=(s.total_slots||0).toLocaleString();
-  document.getElementById('k-pct').textContent  =(s.pct_occ||0)+'%';
-  document.getElementById('k-avg').textContent  =(s.avg_skus||0);
-  document.getElementById('k-full').textContent =(s.locs_full||s.locs_6plus||0).toLocaleString();
+  document.getElementById('hupd').textContent      =DAY.updated||'—';
+  document.getElementById('k-slots').textContent   =(s.total_slots||0).toLocaleString();
+  document.getElementById('k-bays').textContent    =(s.locs_occ||0).toLocaleString();
+  document.getElementById('k-pct').textContent     =(s.pct_occ||0)+'%';
+  document.getElementById('k-pct-multi').textContent=(s.pct_multi||0)+'%';
+  document.getElementById('k-locs-1').textContent  =(s.locs_1||0).toLocaleString();
+  document.getElementById('k-locs-2').textContent  =(s.locs_2||0).toLocaleString();
+  document.getElementById('k-locs-3').textContent  =(s.locs_3||0).toLocaleString();
+  document.getElementById('k-locs-4p').textContent =(s.locs_4plus||0).toLocaleString();
   const blOver=BAYS.filter(b=>b.zone==='BL').reduce((a,b)=>a+b.slots.filter(s=>s.skus.length>1).length,0);
   document.getElementById('k-bl-over').textContent=blOver.toLocaleString();
 }
@@ -604,7 +611,7 @@ function buildGrid(){
   BAYS.forEach(b=>{
     if(b.zone!=='BL'||!tabAisleSet.has(b.aisle)) return;
     if(tab.id!=='Other'&&getBLZone(b.aisle,b.bay)!==tab.id) return;
-    tabOcc+=b.slots.reduce((a,s)=>a+s.skus.length,0); tabTot+=b.n_slots; tabBays++;
+    tabOcc+=b.slots.filter(s=>s.skus.length>0).length; tabTot+=b.n_slots; tabBays++;
   });
   const tabPct=tabTot>0?Math.round(tabOcc/tabTot*100):0;
   tab.aisles.forEach(aisle=>{
@@ -639,7 +646,8 @@ function buildGrid(){
   // ── RK accordion ──────────────────────────────────────────────────────
   function zoneMeta(zd){
     let occ=0,tot=0;
-    BAYS.forEach(b=>{ if(b.zone!==zd.zp||!zd.aisles.includes(b.aisle)) return; occ+=b.slots.reduce((a,s)=>a+s.skus.length,0); tot+=b.n_slots*6; });
+    BAYS.forEach(b=>{ if(b.zone!==zd.zp||!zd.aisles.includes(b.aisle)) return;
+      occ+=b.slots.filter(s=>s.skus.length>0).length; tot+=b.n_slots; });
     return tot>0?`${Math.round(occ/tot*100)}% occ · ${BAYS.filter(b=>b.zone===zd.zp&&zd.aisles.includes(b.aisle)).length} bays`:'—';
   }
   ZONE_DEFS.forEach(zd=>{
@@ -683,9 +691,9 @@ mapwrap.addEventListener('mousemove',e=>{
     return;
   }
   const mx=Math.max(...b.slots.map(s=>s.skus.length));
-  const total=b.slots.reduce((a,s)=>a+s.skus.length,0);
-  const bcap=b.zone==='BL'?b.n_slots:b.n_slots*6;
-  const pct=Math.round(total/bcap*100);
+  const slotsOcc=b.slots.filter(s=>s.skus.length>0).length;  // slots con ≥1 SKU
+  const total=b.slots.reduce((a,s)=>a+s.skus.length,0);      // total SKUs en el bay
+  const pct=Math.round(slotsOcc/b.n_slots*100);               // % slots ocupados
   const vd=bayVolData(b);
   const volHtmlTip=vd.totL>0?`
     <div style="margin-top:4px;border-top:1px solid #21262d;padding-top:4px">
@@ -704,9 +712,10 @@ mapwrap.addEventListener('mousemove',e=>{
   const procIcon=lastPAProc==='transfer'?'🔄 Transfer':'📦 Put Away';
   tip.innerHTML=`
     <div style="font-family:monospace;font-weight:700;color:#58a6ff;margin-bottom:4px">${b.zone} · Pasillo ${b.aisle} · Bay ${b.bay}</div>
-    <div class="tr"><span class="tl">Slots:</span><span class="tv">${b.n_slots}</span></div>
-    <div class="tr"><span class="tl">${b.zone==='BL'?'Slots usados':'SKU-slots usados'}:</span><span class="tv">${total} / ${bcap}</span></div>
-    <div class="tr"><span class="tl">Ocupación:</span><span class="tv">${pct}%</span></div>
+    <div class="tr"><span class="tl">Slots totales:</span><span class="tv">${b.n_slots}</span></div>
+    <div class="tr"><span class="tl">Slots ocupados:</span><span class="tv">${slotsOcc} / ${b.n_slots}</span></div>
+    <div class="tr"><span class="tl">% Ocupación:</span><span class="tv">${pct}%</span></div>
+    <div class="tr"><span class="tl">Total SKUs:</span><span class="tv">${total}</span></div>
     <div class="tr"><span class="tl">Max SKUs/slot:</span><span class="tv">${mx}</span></div>
     <div class="tr"><span class="tl">Qty total:</span><span class="tv">${b.qty.toLocaleString()}</span></div>
     <div class="tr"><span class="tl">Disponible:</span><span class="tv">${b.avail.toLocaleString()}</span></div>
