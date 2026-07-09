@@ -816,8 +816,8 @@ function renderDetail(b,key){
           </div>
           ${vd.peso_usado_kg>0?`<div style="font-size:8px;color:#8b949e;margin-top:2px">Peso: <b style="color:#c9d1d9">${vd.peso_usado_kg} kg</b> / ${vd.peso_max_kg} kg</div>`:''}
         </div>`:'';
-      return `<div class="slot-card" style="border-left:3px solid ${col};background:${n>0?col+'18':'#0d1117'}">
-        <div class="slot-addr" style="color:${col}">${s.id}</div>
+      return `<div class="slot-card" style="border-left:3px solid ${n>0?col:'#30363d'};background:${n>0?col+'18':'#0d1117'}">
+        <div class="slot-addr" style="color:${n>0?col:'#58a6ff88'}">${s.id}</div>
         <div class="occ-bar"><div class="occ-fill" style="width:${p}%;background:${col}"></div></div>
         <div style="font-size:9px;color:${col};margin-bottom:5px">${n}/${slotCap} SKUs &nbsp;·&nbsp; ${s.qty} u &nbsp;·&nbsp; ${s.avail} disp</div>
         ${volHtml}
