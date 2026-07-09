@@ -39,8 +39,8 @@ def fetch():
       CAST(ADRS_BAY      AS INT64) AS bay,
       CAST(ADRS_LEVEL    AS INT64) AS level,
       CAST(ADRS_POSITION AS INT64) AS pos,
-      COALESCE(ADRS_TYPE,  '')     AS adrs_type,
-      COALESCE(ADRS_CLASS, '')     AS adrs_class
+      COALESCE(ADRS_STORAGE_TYPE,    '')  AS adrs_type,
+      COALESCE(ADRS_ADDRESS_TYPE_ID, '')  AS adrs_class
     FROM `{PROJECT}.WHOWNER.LK_FBM_WMS_ADDRESSES`
     WHERE WAREHOUSE_ID = '{WAREHOUSE}'
       AND (UPPER(ADDRESS_ID) LIKE 'RK%' OR UPPER(ADDRESS_ID) LIKE 'BL%')
