@@ -38,7 +38,9 @@ def fetch():
       CAST(ADRS_AISLE    AS INT64) AS aisle,
       CAST(ADRS_BAY      AS INT64) AS bay,
       CAST(ADRS_LEVEL    AS INT64) AS level,
-      CAST(ADRS_POSITION AS INT64) AS pos
+      CAST(ADRS_POSITION AS INT64) AS pos,
+      COALESCE(ADRS_TYPE,  '')     AS adrs_type,
+      COALESCE(ADRS_CLASS, '')     AS adrs_class
     FROM `{PROJECT}.WHOWNER.LK_FBM_WMS_ADDRESSES`
     WHERE WAREHOUSE_ID = '{WAREHOUSE}'
       AND (UPPER(ADDRESS_ID) LIKE 'RK%' OR UPPER(ADDRESS_ID) LIKE 'BL%')
@@ -53,10 +55,13 @@ def fetch():
         aid = r.ADDRESS_ID
         parsed = parse_addr(aid)
         zone = parsed[0] if parsed else aid.split('-')[0]
+        tipo = (r.adrs_type or '').strip()
+        clase = (r.adrs_class or '').strip()
         slots[aid] = {
             'id': aid, 'zone': zone,
             'aisle': r.aisle, 'bay': r.bay, 'level': r.level, 'pos': r.pos,
             'cap': CAP_BY_ZONE.get(zone, 6),
+            'tipo': tipo, 'clase': clase,
             'qty': 0, 'avail': 0, 'res': 0, 'skus': []
         }
 
@@ -109,6 +114,7 @@ def fetch():
         b['qty']     += s['qty']
         b['avail']   += s['avail']
         b['slots'].append({'id': s['id'], 'level': s['level'], 'pos': s['pos'],
+                           'tipo': s.get('tipo',''), 'clase': s.get('clase',''),
                            'skus': s['skus'], 'qty': s['qty'], 'avail': s['avail']})
 
     bays_list = sorted(bays.values(), key=lambda b: (b['aisle'], b['bay']))

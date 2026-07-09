@@ -768,12 +768,33 @@ function renderDetail(b,key){
   }
   dhdr.textContent=`${b.zone} · Pasillo ${b.aisle} · Bay ${b.bay}`;
   const total=b.slots.reduce((a,s)=>a+s.skus.length,0);
-  const cap=b.zone==='BL'?b.n_slots:b.n_slots*6;
-  const pct=Math.round(total/cap*100);
+  const slotsOcc2=b.slots.filter(s=>s.skus.length>0).length;
+  const pct=Math.round(slotsOcc2/b.n_slots*100);
+
+  // Nomenclaturas del bay (tipo/clase únicas entre sus slots)
+  const tiposSet=new Set(b.slots.map(s=>s.tipo||'').filter(Boolean));
+  const clasesSet=new Set(b.slots.map(s=>s.clase||'').filter(Boolean));
+  // NT desde tipo, clase o ID
+  const isNT=[...tiposSet,...clasesSet].some(v=>v.toUpperCase().includes('NT'))
+    || b.slots.some(s=>s.id.toUpperCase().includes('-NT-'));
+  const nomBadges=[...tiposSet].map(t=>{
+    const nt=t.toUpperCase().includes('NT');
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;
+      background:${nt?'#1a2a4a':'#21262d'};color:${nt?'#58a6ff':'#8b949e'};
+      border:1px solid ${nt?'#1f6feb':'#30363d'};font-family:monospace">${t}</span>`;
+  }).join(' ');
+  const claseBadges=[...clasesSet].map(c=>`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;
+    background:#21262d;color:#8b949e;border:1px solid #30363d;font-family:monospace">${c}</span>`).join(' ');
+
   body.innerHTML=`
-    <div class="det-bay">${b.zone}-0-${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}-xx-xx</div>
+    <div class="det-bay">${b.zone}-0-${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}-xx-xx
+      ${isNT?'<span style="margin-left:6px;padding:1px 6px;border-radius:8px;background:#1a2a4a;color:#58a6ff;font-size:8px;border:1px solid #1f6feb">🏷 No Toteable</span>':''}
+    </div>
+    ${(nomBadges||claseBadges)?`<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+      <span style="font-size:8px;color:#484f58">Nomenclatura:</span>${nomBadges}${claseBadges}
+    </div>`:''}
     <div class="det-stat">
-      <b>${b.n_slots}</b> slots &nbsp;·&nbsp; <b>${total}</b>/<b>${cap}</b> SKU-slots &nbsp;·&nbsp; <b>${pct}%</b>
+      <b>${b.n_slots}</b> slots &nbsp;·&nbsp; <b>${slotsOcc2}</b>/<b>${b.n_slots}</b> ocupados &nbsp;·&nbsp; <b>${pct}%</b>
       &nbsp;·&nbsp; <b>${b.qty.toLocaleString()}</b> u · <b>${b.avail.toLocaleString()}</b> disp
     </div>
     ${b.slots.sort((a,z)=>z.skus.length-a.skus.length).map(s=>{
