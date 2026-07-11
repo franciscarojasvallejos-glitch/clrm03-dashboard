@@ -1546,67 +1546,13 @@ async function fetchMeliImg(itemId, elemId) {
 // ── Init ──────────────────────────────────────────────────────────────────
 Promise.all([loadCatalog(), loadResp(), loadDisponibles(), loadBLLayout(), loadVolumetria(), loadSinMovimiento()]).then(()=>loadData());
 
-// ── SSE: conexión en vivo con el servidor ────────────────────────────────────
-(function initSSE(){
+// ── Indicador de estado (GitHub Pages — sin servidor SSE) ─────────────────
+(function initStatus(){
   const dot = document.getElementById('sse-dot');
   const lbl = document.getElementById('sse-lbl');
-  let es, retryTimer;
-
-  function connect(){
-    if(es) es.close();
-    es = new EventSource('/events');
-
-    es.addEventListener('connected', ()=>{
-      dot.style.background='#3fb950';
-      lbl.textContent='en vivo';
-      lbl.style.color='#3fb950';
-    });
-
-    es.addEventListener('checkin_updated', e=>{
-      const d = JSON.parse(e.data);
-      // actualizar KPIs sin recargar toda la tabla si no está visible
-      const s = d.stats||{};
-      if(document.getElementById('ck-total'))
-        document.getElementById('ck-total').textContent=(s.total||0).toLocaleString();
-      if(document.getElementById('ck-pw'))
-        document.getElementById('ck-pw').textContent=(s.en_putaway||0).toLocaleString();
-      if(document.getElementById('ck-pend'))
-        document.getElementById('ck-pend').textContent=(s.pendientes||0).toLocaleString();
-      if(document.getElementById('ck-over'))
-        document.getElementById('ck-over').textContent=(s.over_sla||0).toLocaleString();
-      if(document.getElementById('ck-done'))
-        document.getElementById('ck-done').textContent=(s.done||0).toLocaleString();
-      if(document.getElementById('ck-upd'))
-        document.getElementById('ck-upd').textContent=d.updated||'—';
-      // recargar tabla completa si la pestaña está activa
-      if(document.getElementById('chk-view').style.display!=='none')
-        loadCheckin();
-    });
-
-    es.addEventListener('mz_updated',     ()=>{ if(document.getElementById('mapa-view').style.display!=='none') loadData(); });
-    es.addEventListener('volum_updated',  ()=>{ /* se recarga al abrir sugerencias */ });
-    es.addEventListener('catalog_updated',()=>{ /* catálogo se recarga al abrir inventario */ });
-
-    es.onerror = ()=>{
-      dot.style.background='#f85149';
-      lbl.textContent='reconectando…';
-      lbl.style.color='#f85149';
-      es.close();
-      clearTimeout(retryTimer);
-      retryTimer = setTimeout(connect, 5000);
-    };
-  }
-
-  connect();
-  // Fallback: si no hay SSE (servidor viejo), seguir con polling cada 30s
-  setTimeout(()=>{
-    if(lbl.textContent==='sin conexión'){
-      lbl.textContent='polling 30s';
-      setInterval(()=>{
-        if(document.getElementById('chk-view').style.display!=='none') loadCheckin();
-      }, 30000);
-    }
-  }, 3000);
+  dot.style.background='#3fb950';
+  lbl.textContent='auto-refresh';
+  lbl.style.color='#3fb950';
 })();
 </script>
 </body>
