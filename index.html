@@ -705,9 +705,18 @@ function buildGrid(){
     zd.aisles.forEach(aisle=>{
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      // Header de pasillo
+      // Filas específicas de ESTE pasillo (evita filas vacías de otros pasillos)
+      const aisleLvlPos={};
+      baysInAisle.forEach(b=>b.slots.forEach(s=>{
+        if(!aisleLvlPos[s.level]) aisleLvlPos[s.level]=new Set();
+        aisleLvlPos[s.level].add(s.pos);
+      }));
+      const aisleRows=[];
+      Object.keys(aisleLvlPos).map(Number).sort((a,b)=>b-a).forEach(l=>{
+        [...aisleLvlPos[l]].sort((a,b)=>a-b).forEach(p=>aisleRows.push({level:l,pos:p,label:`L${l}·P${p}`}));
+      });
       aisleHeader(`P${String(aisle).padStart(3,'0')}`);
-      zd.rows.forEach(r=>renderRow(zd.zp,aisle,zd.maxBay,r.level,r.pos,r.label,gridW2,false));
+      aisleRows.forEach(r=>renderRow(zd.zp,aisle,zd.maxBay,r.level,r.pos,r.label,gridW2,false));
     });
     parts.push(`</div></div></div></div>`);
   });
