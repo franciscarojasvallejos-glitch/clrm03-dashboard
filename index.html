@@ -625,6 +625,28 @@ function buildGrid(){
     parts.push(`</div></div>`);
   }
 
+  // Renderiza una fila de nivel RK: una celda por bay, agrega todas las posiciones
+  function renderRKLevelRow(zone, aisle, bayMax, lvl, gridW){
+    const lbl=`<span style="color:#6e7681;font-size:7px;font-family:monospace;font-weight:700">L${lvl}</span>`;
+    parts.push(`<div class="aisle-row"><div class="aisle-lbl">${lbl}</div>`);
+    parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${bayMax},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
+    for(let bay=1;bay<=bayMax;bay++){
+      const bayKey=`${zone}-${aisle}-${bay}`;
+      const b=bayMap[bayKey];
+      if(!b){ parts.push(`<div class="bc wms-gap"></div>`); continue; }
+      const levelSlots=b.slots.filter(s=>s.level===lvl);
+      if(!levelSlots.length){ parts.push(`<div class="bc wms-gap"></div>`); continue; }
+      const maxN=Math.max(...levelSlots.map(s=>s.skus.length));
+      if(maxN===0){ parts.push(`<div class="bc empty" data-key="${bayKey}" data-level="${lvl}"></div>`); continue; }
+      const bg=VIEW_MODE==='vol'?volColor(bayVolData(b).pct):skuColor(maxN);
+      const hasSinMov=levelSlots.some(s=>{const sm=SINMOV[s.id];return sm&&Math.max(...Object.values(sm))>=30;});
+      const smDot=hasSinMov?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#e3b341;pointer-events:none"></span>`:'';
+      const wrapStyle=smDot?'position:relative;overflow:visible':'';
+      parts.push(`<div class="bc" style="background:${bg};${wrapStyle}" data-key="${bayKey}" data-level="${lvl}">${smDot}</div>`);
+    }
+    parts.push(`</div></div>`);
+  }
+
   // Separador entre pasillos
   function aisleHeader(label){
     parts.push(`<div style="display:flex;align-items:center;height:14px;margin:2px 0 0 0">`);
@@ -705,18 +727,12 @@ function buildGrid(){
     zd.aisles.forEach(aisle=>{
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      // Filas específicas de ESTE pasillo (evita filas vacías de otros pasillos)
-      const aisleLvlPos={};
-      baysInAisle.forEach(b=>b.slots.forEach(s=>{
-        if(!aisleLvlPos[s.level]) aisleLvlPos[s.level]=new Set();
-        aisleLvlPos[s.level].add(s.pos);
-      }));
-      const aisleRows=[];
-      Object.keys(aisleLvlPos).map(Number).sort((a,b)=>b-a).forEach(l=>{
-        [...aisleLvlPos[l]].sort((a,b)=>a-b).forEach(p=>aisleRows.push({level:l,pos:p,label:`L${l}·P${p}`}));
-      });
+      // Una fila por NIVEL (agrega todas las posiciones del bay×nivel)
+      const aisleLevels=new Set();
+      baysInAisle.forEach(b=>b.slots.forEach(s=>aisleLevels.add(s.level)));
+      const sortedLevels=[...aisleLevels].sort((a,b)=>b-a);
       aisleHeader(`P${String(aisle).padStart(3,'0')}`);
-      aisleRows.forEach(r=>renderRow(zd.zp,aisle,zd.maxBay,r.level,r.pos,r.label,gridW2,false));
+      sortedLevels.forEach(lvl=>renderRKLevelRow(zd.zp,aisle,zd.maxBay,lvl,gridW2));
     });
     parts.push(`</div></div></div></div>`);
   });
@@ -786,16 +802,20 @@ mapwrap.addEventListener('mouseleave',()=>tip.classList.remove('vis'));
 mapwrap.addEventListener('click',e=>{
   const cell=e.target.closest('[data-key]');
   if(!cell) return;
-  const slotId = cell.dataset.slot;
-  const bayKey = cell.dataset.key;
-  if(slotId){
-    // Click en celda con stock → popup de slot
-    tip.classList.remove('vis');
-    abrirSlotModal(slotId, bayKey);
+  const bayKey=cell.dataset.key;
+  const level=cell.dataset.level!=null?parseInt(cell.dataset.level):null;
+  const slotId=cell.dataset.slot;
+  tip.classList.remove('vis');
+  if(level!==null&&!slotId){
+    // RK: celda de nivel → modal con todas las posiciones de ese bay×nivel
+    abrirBayLevelModal(bayKey,level);
+  } else if(slotId){
+    // BL: celda de slot → modal de slot individual
+    abrirSlotModal(slotId,bayKey);
   } else {
-    // Click en celda vacía → detalle de bay en panel lateral (comportamiento anterior)
+    // Celda vacía → panel lateral
     if(selKey){ document.querySelectorAll(`[data-key="${CSS.escape(selKey)}"]`).forEach(el=>el.classList.remove('sel')); }
-    if(cell.dataset.key===selKey){ selKey=null; renderDetail(null,null); return; }
+    if(bayKey===selKey){ selKey=null; renderDetail(null,null); return; }
     selKey=bayKey;
     document.querySelectorAll(`[data-key="${CSS.escape(selKey)}"]`).forEach(el=>el.classList.add('sel'));
     renderDetail(bayMap[selKey],selKey);
@@ -807,6 +827,42 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarModal(); });
 // ── Modal de slot ─────────────────────────────────────────────────────────
 function cerrarModal(){
   document.getElementById('slot-modal').classList.remove('vis');
+}
+
+function abrirBayLevelModal(bayKey,lvl){
+  const b=bayMap[bayKey];
+  const modal=document.getElementById('slot-modal');
+  const title=document.getElementById('modal-title');
+  const body=document.getElementById('modal-body');
+  const [zone,aisle,bay]=bayKey.split('-');
+  title.textContent=`${zone} · Pasillo ${aisle} · Bay ${bay} · Nivel L${lvl}`;
+  if(!b){ body.innerHTML=`<div style="color:#8b949e;font-size:11px;text-align:center;padding:20px">Bay no encontrado</div>`; modal.classList.add('vis'); return; }
+  const levelSlots=b.slots.filter(s=>s.level===lvl).sort((a,z)=>a.pos-z.pos).filter(s=>s.skus.length>0);
+  if(!levelSlots.length){ body.innerHTML=`<div style="color:#8b949e;font-size:11px;text-align:center;padding:20px">Nivel vacío</div>`; modal.classList.add('vis'); return; }
+  const rows=levelSlots.map(slot=>{
+    const col=skuColor(slot.skus.length);
+    const smData=SINMOV[slot.id]||{};
+    const skuRows=slot.skus.map(sk=>{
+      const cat=CATALOG[sk]||{};
+      const name=cat.name||cat.title||cat.descripcion||'';
+      const dias=smData[sk];
+      const sinBadge=dias!=null?(dias>=60?`<span style="color:#f85149;font-size:9px;margin-left:4px">⏱ ${dias}d</span>`:dias>=30?`<span style="color:#e3b341;font-size:9px;margin-left:4px">⏱ ${dias}d</span>`:''):'';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #30363d">
+        <span style="font-family:monospace;font-size:10px;color:#58a6ff;font-weight:700;min-width:110px">${sk}</span>
+        ${sinBadge}
+        ${name?`<span style="font-size:9px;color:#8b949e;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</span>`:''}
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:8px;padding:8px 10px;background:#21262d;border-radius:4px;border-left:3px solid ${col}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-family:monospace;font-size:10px;font-weight:700;color:${col}">${slot.id}</span>
+        <span style="font-size:9px;color:#484f58">${slot.skus.length} SKU${slot.skus.length!==1?'s':''} · ${slot.qty||0} u · ${slot.avail||0} disp</span>
+      </div>
+      ${skuRows}
+    </div>`;
+  }).join('');
+  body.innerHTML=rows;
+  modal.classList.add('vis');
 }
 
 function abrirSlotModal(slotId, bayKey){
