@@ -381,8 +381,10 @@ function getBLZone(aisle, bay){
 
 // ── Zonas RK accordion ─────────────────────────────────────────────────────
 const ZONE_DEFS = [
-  { id:'ZA', zp:'RK', label:'RK — Z-A  (P005–P018)', color:'#3fb950',
-    aisles:[5,6,7,8,9,10,11,12,13,14,15,16,17,18], maxBay:50, step:10 },
+  { id:'ZA',  zp:'RK', label:'RK — Z-A  (P005–P012)', color:'#3fb950',
+    aisles:[5,6,7,8,9,10,11,12], maxBay:50, step:10 },
+  { id:'ZA2', zp:'RK', label:'RK — Z-A2 (P013–P018)', color:'#56d364',
+    aisles:[13,14,15,16,17,18], maxBay:50, step:10 },
   { id:'ZB', zp:'RK', label:'RK — Z-B  (P101–P123)', color:'#58a6ff',
     aisles:[101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123], maxBay:66, step:10 },
 ];
@@ -541,6 +543,15 @@ function setBLTab(id){ blTab=id; buildGrid(); if(selKey&&bayMap[selKey]){documen
 
 // ── Build Grid ────────────────────────────────────────────────────────────
 function buildGrid(){
+  // Compute actual maxBay and step from real data (overrides hardcoded values)
+  ZONE_DEFS.forEach(zd=>{
+    const aisleSet=new Set(zd.aisles);
+    let mb=0;
+    BAYS.forEach(b=>{ if(b.zone===zd.zp&&aisleSet.has(b.aisle)&&b.bay>mb) mb=b.bay; });
+    zd.maxBay=mb||50;
+    zd.step=mb>150?20:mb>80?10:5;
+  });
+
   const CELL_MIN=10;
   const parts=[];
 
