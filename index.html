@@ -275,6 +275,14 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
         </div>
         <div id="sug-cola"><div style="color:#484f58;font-size:10px">Cargando…</div></div>
       </div>
+      <div id="sug-sinmov-wrap" style="margin-top:14px">
+        <div style="font-size:10px;font-weight:700;color:#e3b341;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+          ⏱ Stock sin movimiento
+          <span style="font-size:8px;color:#484f58;font-weight:400">SKUs sin picking ≥30 días · top 30</span>
+          <span id="sinmov-kpi" style="margin-left:auto;font-size:9px;color:#e3b341"></span>
+        </div>
+        <div id="sug-sinmov"><div style="color:#484f58;font-size:10px">Sin datos (corre fetch_sin_movimiento.py)</div></div>
+      </div>
       <div id="sug-empty" style="display:none">
         🔍 Busca un SKU o producto para ver<br>sugerencias de dónde guardarlo<br>
         <span style="font-size:10px;color:#30363d">basado en volumetría y afinidad de producto</span>
@@ -390,7 +398,7 @@ const ZONE_DEFS = [
 ];
 
 // ── Estado ────────────────────────────────────────────────────────────────
-let DAY={}, BAYS=[], bayMap={}, selKey=null, CATALOG={}, RESP={}, BL_WMS_LAYOUT={}, VOLDATA={};
+let DAY={}, BAYS=[], bayMap={}, selKey=null, CATALOG={}, RESP={}, BL_WMS_LAYOUT={}, VOLDATA={}, SINMOV={};
 let VIEW_MODE='sku'; // 'sku' | 'vol'
 
 function volColor(pct){
@@ -475,6 +483,14 @@ async function loadResp(){
   try{
     const r=await fetch('data/responsables_CLRM03.json?t='+Date.now());
     if(r.ok){const d=await r.json();RESP=d.data||{};}
+  }catch(e){}
+}
+
+// ── Carga sin movimiento ───────────────────────────────────────────────────
+async function loadSinMovimiento(){
+  try{
+    const r=await fetch('data/sin_movimiento_CLRM03.json?t='+Math.floor(Date.now()/86400000)*86400000);
+    if(r.ok){const d=await r.json(); SINMOV=d.slots||{};}
   }catch(e){}
 }
 
@@ -586,7 +602,12 @@ function buildGrid(){
         const n=sl.skus.length;
         const bg=isBL?blSkuColor(n):skuColor(n);
         const bgFinal=VIEW_MODE==='vol'&&bayExists?volColor(bayVolData(bayMap[bayKey]).pct):bg;
-        parts.push(`<div class="bc" style="background:${bgFinal}" data-key="${bayKey}" title="${slKey}"></div>`);
+        // Indicador sin movimiento: punto naranja si algún SKU lleva ≥30 días sin picking
+        const smData=SINMOV[sl.id];
+        const maxDias=smData?Math.max(...Object.values(smData)):0;
+        const smDot=maxDias>=30?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#e3b341;pointer-events:none"></span>`:'';
+        const wrapStyle=smDot?'position:relative;overflow:visible':'';
+        parts.push(`<div class="bc" style="background:${bgFinal};${wrapStyle}" data-key="${bayKey}" title="${slKey}">${smDot}</div>`);
       }else if(bayExists){
         parts.push(`<div class="${isBL?'bc empty bl-empty':'bc empty'}" data-key="${bayKey}"></div>`);
       }else{
@@ -837,6 +858,8 @@ function renderDetail(b,key){
         ${s.skus.map(sk=>{
           const cat=CATALOG[sk];
           const resp=RESP[`${s.id}|${sk}`];
+          const smDias=(SINMOV[s.id]||{})[sk];
+          const smBadge=smDias!=null?(smDias>=30?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:#3d2a0a;color:#e3b341;border:1px solid #e3b34144;margin-left:4px">⏱ ${smDias}d sin mov</span>`:(smDias>=14?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:#1a2f1a;color:#6e9b6e;border:1px solid #3fb95044;margin-left:4px">${smDias}d</span>`:'')):'';
           const proc=resp?.proc||'put_away';
           const procIcon=proc==='transfer'?'🔄 Transfer':'📦 Put Away';
           const hasName=resp&&resp.name;
@@ -854,14 +877,14 @@ function renderDetail(b,key){
                 ${imgHtml}
                 <div class="prod-info">
                   <div class="prod-title">${url?`<a href="${url}" target="_blank" style="color:#58a6ff;text-decoration:none">${cat.title}</a>`:cat.title}</div>
-                  <div class="prod-meta"><span class="sku-chip">${sk}</span>&nbsp;${cat.brand||''}</div>
+                  <div class="prod-meta"><span class="sku-chip">${sk}</span>&nbsp;${cat.brand||''}${smBadge}</div>
                   ${respHtml}
                 </div>
               </div>
             </div>`;
           }
           return `<div style="margin-bottom:4px;padding:4px;background:#21262d;border-radius:4px">
-            <div class="prod-meta"><span class="sku-chip">${sk}</span></div>
+            <div class="prod-meta"><span class="sku-chip">${sk}</span>${smBadge}</div>
             ${respHtml}
           </div>`;
         }).join('')}
@@ -1131,6 +1154,47 @@ function buildSugIndex(){
   document.getElementById('sug-status').textContent=`${SUG_SKUS.length.toLocaleString()} SKUs · ${SUG_SLOTS.length.toLocaleString()} ubicaciones disponibles`;
   renderSKUList(SUG_SKUS);
   renderColaPendiente();
+  renderSinMovimiento();
+}
+
+// ── Ranking sin movimiento ─────────────────────────────────────────────────
+function renderSinMovimiento(){
+  const el=document.getElementById('sug-sinmov');
+  const kpi=document.getElementById('sinmov-kpi');
+  if(!el) return;
+  if(!Object.keys(SINMOV).length){
+    el.innerHTML='<div style="color:#484f58;font-size:10px;padding:8px">Sin datos — corre fetch_sin_movimiento.py</div>';
+    return;
+  }
+  // Construir lista: un entry por (address, sku) con dias≥30
+  const items=[];
+  Object.entries(SINMOV).forEach(([addr,skus])=>{
+    Object.entries(skus).forEach(([sku,dias])=>{
+      if(dias>=30) items.push({addr,sku,dias});
+    });
+  });
+  items.sort((a,b)=>b.dias-a.dias);
+  if(kpi) kpi.textContent=`${items.length.toLocaleString()} SKUs en alerta`;
+  if(!items.length){
+    el.innerHTML='<div style="color:#3fb950;font-size:10px;padding:8px">✓ Sin stock varado — todo se movió en los últimos 30 días</div>';
+    return;
+  }
+  const top=items.slice(0,30);
+  const rows=top.map(it=>{
+    const cat=CATALOG[it.sku];
+    const titulo=cat?.title?`<span style="color:#c9d1d9">${cat.title.substring(0,40)}${cat.title.length>40?'…':''}</span>`:'';
+    const diasCol=it.dias>=60?'#f85149':it.dias>=45?'#d07030':'#e3b341';
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 6px;background:#161b22;border-radius:4px;margin-bottom:3px;border-left:3px solid ${diasCol}">
+      <span style="font-size:11px;font-weight:700;color:${diasCol};min-width:32px">${it.dias}d</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:8px;font-family:monospace;color:#58a6ff88;margin-bottom:1px">${it.addr}</div>
+        <div style="font-size:8px;display:flex;gap:4px;align-items:center">
+          <span class="sku-chip">${it.sku}</span>${titulo}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=rows;
 }
 
 // ── Cola de pendientes ordenada por urgencia SLA ──────────────────────────
@@ -1474,7 +1538,7 @@ async function fetchMeliImg(itemId, elemId) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-Promise.all([loadCatalog(), loadResp(), loadDisponibles(), loadBLLayout(), loadVolumetria()]).then(()=>loadData());
+Promise.all([loadCatalog(), loadResp(), loadDisponibles(), loadBLLayout(), loadVolumetria(), loadSinMovimiento()]).then(()=>loadData());
 
 // ── SSE: conexión en vivo con el servidor ────────────────────────────────────
 (function initSSE(){
