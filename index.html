@@ -909,7 +909,10 @@ function switchTab(tab){
     b.classList.toggle('active', ['mapa','sug','inv','chk'][i]===tab);
   });
   if(tab==='sug' && !SUG_READY) buildSugIndex();
-  if(tab==='inv' && !INV_READY) buildInvIndex();
+  if(tab==='inv'){
+    if(!CATALOG || Object.keys(CATALOG).length===0) loadCatalog().then(()=>{ if(!INV_READY) buildInvIndex(); });
+    else if(!INV_READY) buildInvIndex();
+  }
   if(tab==='chk'){
     loadCheckin();
     if(CHK_AUTO) clearInterval(CHK_AUTO);
@@ -1544,7 +1547,15 @@ async function fetchMeliImg(itemId, elemId) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-Promise.all([loadCatalog(), loadResp(), loadDisponibles(), loadBLLayout(), loadVolumetria(), loadSinMovimiento()]).then(()=>loadData());
+// Primero: archivos pequeños necesarios para el mapa (~10 MB total)
+Promise.all([loadDisponibles(), loadBLLayout(), loadSinMovimiento()])
+  .then(()=>loadData())
+  .then(()=>{
+    // Después del mapa: cargar archivos pesados en segundo plano
+    loadResp();        // 6.5 MB — tooltips put-away
+    loadVolumetria();  // 14.5 MB — modo volumen
+  });
+// catalog (61 MB) y checkin (2 MB) se cargan solo cuando se abre su pestaña
 
 // ── Indicador de estado (GitHub Pages — sin servidor SSE) ─────────────────
 (function initStatus(){
