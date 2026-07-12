@@ -248,6 +248,12 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     Pasillo: <span id="s-aisle">—</span> &nbsp;|&nbsp;
     Bay: <span id="s-bay">—</span> &nbsp;|&nbsp;
     <span id="s-msg">Hover sobre el mapa</span>
+    <div style="margin-left:auto;position:relative;display:flex;align-items:center;gap:6px">
+      <input id="loc-search" type="text" placeholder="Buscar ubicación…  ej: RK-005-001" autocomplete="off"
+        style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;font-size:10px;font-family:monospace;padding:3px 8px;border-radius:4px;outline:none;width:220px"
+        oninput="locSearchInput(this.value)" onkeydown="locSearchKey(event)">
+      <div id="loc-results" style="display:none;position:absolute;top:100%;right:0;z-index:500;background:#161b22;border:1px solid #30363d;border-radius:4px;min-width:300px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.6);margin-top:2px"></div>
+    </div>
   </div>
   <div id="main">
     <div id="mapwrap"></div>
@@ -1696,6 +1702,106 @@ Promise.all([loadDisponibles(), loadBLLayout(), loadSinMovimiento()])
     loadVolumetria();  // 14.5 MB — modo volumen
   });
 // catalog (61 MB) y checkin (2 MB) se cargan solo cuando se abre su pestaña
+
+// ── Buscador de ubicaciones ───────────────────────────────────────────────
+let _locIdx=null;
+let _locSelIdx=-1;
+
+function _buildLocIdx(){
+  if(_locIdx) return;
+  _locIdx=[];
+  BAYS.forEach(b=>{
+    b.slots.forEach(s=>{
+      _locIdx.push({id:s.id, bayKey:`${b.zone}-${b.aisle}-${b.bay}`, level:s.level, pos:s.pos,
+        skus:s.skus.length, zone:b.zone, aisle:b.aisle, bay:b.bay});
+    });
+  });
+}
+
+function locSearchInput(q){
+  _locIdx=null; // rebuild on each keypress to get fresh data
+  const box=document.getElementById('loc-results');
+  q=q.trim().toUpperCase();
+  if(q.length<2){ box.style.display='none'; _locSelIdx=-1; return; }
+  _buildLocIdx();
+  const hits=_locIdx.filter(r=>r.id.toUpperCase().includes(q)).slice(0,30);
+  if(!hits.length){ box.innerHTML=`<div style="padding:8px 12px;color:#484f58;font-size:10px">Sin resultados</div>`; box.style.display='block'; return; }
+  _locSelIdx=-1;
+  box.innerHTML=hits.map((r,i)=>{
+    const col=r.zone==='BL'?(r.skus>0?'#4da6ff':'#1a4f96'):(r.skus===0?'#30363d':r.skus>=4?'#f85149':r.skus===3?'#d07030':r.skus===2?'#e3b341':'#3fb950');
+    const occ=r.skus>0?`<span style="color:${col};font-weight:700">${r.skus} SKU${r.skus!==1?'s':''}</span>`:`<span style="color:#484f58">vacía</span>`;
+    return `<div class="loc-hit" data-idx="${i}" style="padding:6px 12px;cursor:pointer;border-bottom:1px solid #21262d;display:flex;align-items:center;gap:10px"
+      onmouseenter="locHover(${i})" onclick="locGo(${i})">
+      <span style="font-family:monospace;font-size:11px;color:#c9d1d9;flex:1">${r.id.replace(q,'<mark style="background:#264f78;color:#c9d1d9;border-radius:2px">'+q+'</mark>')}</span>
+      ${occ}
+    </div>`;
+  }).join('');
+  box.style.display='block';
+  box._hits=hits;
+}
+
+function locHover(i){ _locSelIdx=i; _locHighlight(); }
+
+function _locHighlight(){
+  document.querySelectorAll('.loc-hit').forEach((el,i)=>{
+    el.style.background=i===_locSelIdx?'#21262d':'';
+  });
+}
+
+function locSearchKey(e){
+  const box=document.getElementById('loc-results');
+  if(box.style.display==='none') return;
+  const hits=box._hits||[];
+  if(e.key==='ArrowDown'){ e.preventDefault(); _locSelIdx=Math.min(_locSelIdx+1,hits.length-1); _locHighlight(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); _locSelIdx=Math.max(_locSelIdx-1,0); _locHighlight(); }
+  else if(e.key==='Enter' && _locSelIdx>=0){ e.preventDefault(); locGo(_locSelIdx); }
+  else if(e.key==='Escape'){ box.style.display='none'; document.getElementById('loc-search').blur(); }
+}
+
+function locGo(i){
+  const box=document.getElementById('loc-results');
+  const hits=box._hits||[];
+  const r=hits[i];
+  if(!r) return;
+  box.style.display='none';
+  document.getElementById('loc-search').value=r.id;
+
+  // Abrir la zona si está colapsada (RK)
+  if(r.zone==='RK'){
+    const zd=ZONE_DEFS.find(z=>z.aisles.includes(r.aisle));
+    if(zd && !openZones.has(zd.id)){ toggleZone(zd.id); }
+  }
+  // Cambiar pestaña BL si aplica
+  if(r.zone==='BL'){
+    const tab=BL_TABS.find(t=>t.aisles.includes(r.aisle));
+    if(tab && blTab!==tab.id) setBLTab(tab.id);
+  }
+
+  // Scroll a la celda y abrir modal
+  setTimeout(()=>{
+    const bayKey=r.bayKey;
+    const cell=document.querySelector(`[data-key="${CSS.escape(bayKey)}"][data-level="${r.level}"]`)
+      || document.querySelector(`[data-key="${CSS.escape(bayKey)}"]`);
+    if(cell){
+      cell.scrollIntoView({behavior:'smooth',block:'center'});
+      cell.style.outline='2px solid #fff';
+      setTimeout(()=>{ cell.style.outline=''; },1500);
+    }
+    // Abrir modal con el detalle
+    if(r.zone==='BL'){
+      abrirSlotModal(r.id, bayKey);
+    } else {
+      abrirBayLevelModal(bayKey, r.level);
+    }
+  }, r.zone==='RK' ? 300 : 50);
+}
+
+// Cerrar dropdown al hacer click fuera
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#loc-search') && !e.target.closest('#loc-results')){
+    document.getElementById('loc-results').style.display='none';
+  }
+});
 
 // ── Indicador de estado (GitHub Pages — sin servidor SSE) ─────────────────
 (function initStatus(){
