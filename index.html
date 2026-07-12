@@ -1574,69 +1574,138 @@ async function loadCheckin(){
   }catch(e){}
 }
 
+// filtro activo de movable
+let PW_MOVABLE_FILTER=null;
+
 function renderPutawaySLA(){
   const hdr=document.getElementById('chk-det-hdr');
   const body=document.getElementById('chk-det-body');
-  if(CHK_SEL) return; // no pisar detalle de item seleccionado
+  if(CHK_SEL) return;
 
-  // Items pendientes de guardar (no terminados), ordenados por urgencia
   const pending=CHK_DATA.filter(o=>o.sla!=='done').sort((a,b)=>{
     const prio={'over':0,'warn':1,'pw_active':2,'ok':3,'unknown':4};
     const pa=prio[a.sla]??5, pb=prio[b.sla]??5;
     if(pa!==pb) return pa-pb;
-    // mismo grupo: más tiempo esperando primero
     return (b.mins_since_chk||0)-(a.mins_since_chk||0);
   });
 
-  const over=pending.filter(o=>o.sla==='over');
-  const warn=pending.filter(o=>o.sla==='warn');
-  const active=pending.filter(o=>o.sla==='pw_active');
-  const ok=pending.filter(o=>o.sla==='ok'||o.sla==='unknown');
+  // agrupar por movable
+  const byMovable={};
+  pending.forEach(o=>{
+    const mv=o.movable||'(sin movable)';
+    if(!byMovable[mv]) byMovable[mv]={movable:mv, items:[], maxSla:'ok', minRestantes:null, is_id:o.is_id||''};
+    byMovable[mv].items.push(o);
+    const slaPrio={'over':0,'warn':1,'pw_active':2,'ok':3,'unknown':4};
+    if((slaPrio[o.sla]??5)<(slaPrio[byMovable[mv].maxSla]??5)) byMovable[mv].maxSla=o.sla;
+    if(o.mins_restantes!=null&&(byMovable[mv].minRestantes===null||o.mins_restantes<byMovable[mv].minRestantes))
+      byMovable[mv].minRestantes=o.mins_restantes;
+  });
 
-  hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between">
-    <span style="color:#e3b341">📦 Putaway por Guardar</span>
-    <span style="font-size:9px;color:#484f58;font-weight:400">${pending.length} pendientes</span>
+  const groups=Object.values(byMovable).sort((a,b)=>{
+    const prio={'over':0,'warn':1,'pw_active':2,'ok':3,'unknown':4};
+    return (prio[a.maxSla]??5)-(prio[b.maxSla]??5);
+  });
+
+  const over=groups.filter(g=>g.maxSla==='over').length;
+  const warn=groups.filter(g=>g.maxSla==='warn').length;
+  const active=groups.filter(g=>g.maxSla==='pw_active').length;
+
+  hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
+    <span style="color:#e3b341;font-weight:700">📦 Putaway por Guardar</span>
+    <span style="font-size:8px;color:#484f58">${groups.length} movables · ${pending.length} SKUs</span>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:6px;font-size:9px">
+    <span style="color:#f85149">🔴 ${over} vencidos</span>
+    <span style="color:#e3b341">⚠️ ${warn} en riesgo</span>
+    <span style="color:#58a6ff">📦 ${active} activos</span>
+    ${PW_MOVABLE_FILTER?`<button onclick="pwClearFilter()" style="margin-left:auto;font-size:8px;padding:1px 6px;border-radius:8px;background:#30363d;color:#c9d1d9;border:none;cursor:pointer">✕ Limpiar filtro</button>`:''}
   </div>`;
 
-  function mkCard(o){
-    const cat=CATALOG[o.sku]||{};
-    const name=(cat.title||'').slice(0,38)||(o.sku);
-    const espera=fmtHoras(o.mins_since_chk);
-    const slaColor=o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':o.sla==='pw_active'?'#58a6ff':'#3fb950';
-    const slaIcon=o.sla==='over'?'🔴':o.sla==='warn'?'🟡':o.sla==='pw_active'?'📦':'🟢';
-    const restTxt=o.sla==='over'
-      ?`vencido hace ${fmtHoras(Math.abs(o.mins_restantes||0))}`
-      :o.sla==='warn'||o.sla==='ok'
-        ?`${fmtHoras(o.mins_restantes||0)} restantes`
-        :`en proceso ${fmtHoras(o.mins_pw_dur)}`;
-    return `<div onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})" style="padding:8px 10px;border-bottom:1px solid #21262d;cursor:pointer;transition:background .1s"
-      onmouseover="this.style.background='#21262d'" onmouseout="this.style.background=''">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <span style="font-size:10px">${slaIcon}</span>
-        <span style="font-family:monospace;font-size:10px;color:#58a6ff;font-weight:700">${o.sku}</span>
-        <span style="margin-left:auto;font-size:10px;font-weight:700;color:${slaColor}">${o.qty_chk||o.qty_dec||0} u</span>
+  function slaColor(sla){return sla==='over'?'#f85149':sla==='warn'?'#e3b341':sla==='pw_active'?'#58a6ff':'#3fb950';}
+  function slaIcon(sla){return sla==='over'?'🔴':sla==='warn'?'⚠️':sla==='pw_active'?'📦':'🟢';}
+
+  function mkMovableCard(g){
+    const col=slaColor(g.maxSla);
+    const icon=slaIcon(g.maxSla);
+    const isNT=g.movable.includes('-NT-');
+    const ntBadge=isNT?`<span style="padding:1px 5px;border-radius:6px;background:#1a2a4a;color:#58a6ff;font-size:8px;border:1px solid #1f6feb">NT</span>`:'';
+    const restTxt=g.maxSla==='over'
+      ?`<span style="color:#f85149">vencido ${fmtHoras(Math.abs(g.minRestantes||0))}</span>`
+      :g.minRestantes!=null
+        ?`<span style="color:${col}">${fmtHoras(g.minRestantes)} restantes</span>`:'';
+    const maxEspera=Math.max(...g.items.map(o=>o.mins_since_chk||0));
+    const totalUnits=g.items.reduce((s,o)=>s+(o.qty_chk||o.qty_dec||0),0);
+    const isActive=PW_MOVABLE_FILTER===g.movable;
+    const skuList=g.items.slice(0,3).map(o=>`<span style="font-family:monospace;font-size:8px;color:#58a6ff">${o.sku}</span>`).join(' ');
+    const moreSkus=g.items.length>3?`<span style="font-size:8px;color:#484f58">+${g.items.length-3} más</span>`:'';
+    return `<div onclick="pwFilterMovable('${g.movable}')" style="padding:9px 10px;border-bottom:1px solid #21262d;cursor:pointer;
+      border-left:3px solid ${col};background:${isActive?'#21262d':'transparent'};transition:background .1s"
+      onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='${isActive?'#21262d':'transparent'}'">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+        <span>${icon}</span>
+        <span style="font-family:monospace;font-size:10px;color:#c9d1d9;font-weight:700">${g.movable}</span>
+        ${ntBadge}
+        <span style="margin-left:auto;font-family:monospace;font-size:9px;color:#484f58">IS: ${g.is_id||'—'}</span>
       </div>
-      <div style="font-size:9px;color:#c9d1d9;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
-      <div style="display:flex;gap:8px;font-size:8px;color:#8b949e">
-        <span>⏱ ${espera} esperando</span>
-        <span style="color:${slaColor}">${restTxt}</span>
+      <div style="display:flex;gap:10px;font-size:9px;margin-bottom:4px">
+        <span style="color:#8b949e">⏱ ${fmtHoras(maxEspera)} max espera</span>
+        <span style="color:#e3b341;font-weight:700">${totalUnits} u</span>
+        <span style="color:#484f58">${g.items.length} SKU${g.items.length!==1?'s':''}</span>
+        ${restTxt}
       </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${skuList}${moreSkus}</div>
     </div>`;
   }
 
-  function mkSection(label, color, items, icon){
-    if(!items.length) return '';
-    return `<div style="padding:6px 10px;background:#0d1117;font-size:9px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;z-index:1">
-      ${icon} ${label} (${items.length})
-    </div>${items.map(mkCard).join('')}`;
-  }
+  const visGroups=PW_MOVABLE_FILTER
+    ?groups.filter(g=>g.movable===PW_MOVABLE_FILTER)
+    :groups;
 
-  body.innerHTML=
-    mkSection('Sobre SLA','#f85149',over,'🔴')+
-    mkSection('En Riesgo','#e3b341',warn,'⚠️')+
-    mkSection('En Putaway Activo','#58a6ff',active,'📦')+
-    mkSection('En Tiempo','#3fb950',ok,'🟢')||
-    `<div style="color:#3fb950;font-size:11px;padding:20px;text-align:center">✓ Sin items pendientes</div>`;
+  body.innerHTML=(visGroups.length
+    ?visGroups.map(mkMovableCard).join('')
+    :`<div style="color:#3fb950;font-size:11px;padding:20px;text-align:center">✓ Sin items pendientes</div>`);
+}
+
+function pwFilterMovable(mv){
+  if(PW_MOVABLE_FILTER===mv){
+    pwClearFilter();
+    return;
+  }
+  PW_MOVABLE_FILTER=mv;
+  // filtrar tabla principal
+  CHK_FILTER._movable=mv;
+  chkRenderMovable();
+  renderPutawaySLA();
+}
+
+function pwClearFilter(){
+  PW_MOVABLE_FILTER=null;
+  CHK_FILTER._movable=null;
+  chkRender();
+  renderPutawaySLA();
+}
+
+function chkRenderMovable(){
+  // misma lógica de chkRender pero filtrado por movable
+  const mv=CHK_FILTER._movable;
+  const list=CHK_DATA.filter(o=>o.sla!=='done'&&(o.movable||'(sin movable)')===mv);
+  const tbody=document.getElementById('chk-tbody');
+  tbody.innerHTML=list.map(o=>{
+    const cat=CATALOG[o.sku]||{};
+    const title=cat.title||'';
+    const shortTitle=title.length>28?title.slice(0,28)+'…':title;
+    return `<tr onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
+      <td>${chkSlaLabel(o)}</td>
+      <td><span style="font-family:monospace;font-size:10px;color:#58a6ff">${o.sku}</span></td>
+      <td><span style="color:#c9d1d9;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
+      <td style="font-weight:700;color:#e3b341;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
+      <td style="font-size:9px;color:#8b949e;white-space:nowrap">${o.chk_ts||'—'}</td>
+      <td style="font-size:9px;color:#8b949e;white-space:nowrap">${fmtHoras(o.mins_since_chk)}</td>
+      <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?(o.movable.includes('NT')?'#58a6ff':'#3fb950'):'#484f58'}">${o.movable||'—'}</span></td>
+      <td style="font-size:9px;color:#8b949e">${o.seller||'—'}</td>
+      <td style="font-size:9px;color:#484f58;font-family:monospace">${o.is_id||'—'}</td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="9" style="text-align:center;color:#484f58;padding:12px;font-size:10px">Sin items en movable ${mv}</td></tr>`;
 }
 
 function chkToggle(f){
