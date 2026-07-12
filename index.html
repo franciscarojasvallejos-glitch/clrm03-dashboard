@@ -1569,8 +1569,74 @@ async function loadCheckin(){
     document.getElementById('ck-done').textContent=(s.done||0).toLocaleString();
     document.getElementById('ck-upd').textContent=d.updated||'—';
     chkRender();
+    renderPutawaySLA();
     if(SUG_READY) renderColaPendiente();
   }catch(e){}
+}
+
+function renderPutawaySLA(){
+  const hdr=document.getElementById('chk-det-hdr');
+  const body=document.getElementById('chk-det-body');
+  if(CHK_SEL) return; // no pisar detalle de item seleccionado
+
+  // Items pendientes de guardar (no terminados), ordenados por urgencia
+  const pending=CHK_DATA.filter(o=>o.sla!=='done').sort((a,b)=>{
+    const prio={'over':0,'warn':1,'pw_active':2,'ok':3,'unknown':4};
+    const pa=prio[a.sla]??5, pb=prio[b.sla]??5;
+    if(pa!==pb) return pa-pb;
+    // mismo grupo: más tiempo esperando primero
+    return (b.mins_since_chk||0)-(a.mins_since_chk||0);
+  });
+
+  const over=pending.filter(o=>o.sla==='over');
+  const warn=pending.filter(o=>o.sla==='warn');
+  const active=pending.filter(o=>o.sla==='pw_active');
+  const ok=pending.filter(o=>o.sla==='ok'||o.sla==='unknown');
+
+  hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between">
+    <span style="color:#e3b341">📦 Putaway por Guardar</span>
+    <span style="font-size:9px;color:#484f58;font-weight:400">${pending.length} pendientes</span>
+  </div>`;
+
+  function mkCard(o){
+    const cat=CATALOG[o.sku]||{};
+    const name=(cat.title||'').slice(0,38)||(o.sku);
+    const espera=fmtHoras(o.mins_since_chk);
+    const slaColor=o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':o.sla==='pw_active'?'#58a6ff':'#3fb950';
+    const slaIcon=o.sla==='over'?'🔴':o.sla==='warn'?'🟡':o.sla==='pw_active'?'📦':'🟢';
+    const restTxt=o.sla==='over'
+      ?`vencido hace ${fmtHoras(Math.abs(o.mins_restantes||0))}`
+      :o.sla==='warn'||o.sla==='ok'
+        ?`${fmtHoras(o.mins_restantes||0)} restantes`
+        :`en proceso ${fmtHoras(o.mins_pw_dur)}`;
+    return `<div onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})" style="padding:8px 10px;border-bottom:1px solid #21262d;cursor:pointer;transition:background .1s"
+      onmouseover="this.style.background='#21262d'" onmouseout="this.style.background=''">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <span style="font-size:10px">${slaIcon}</span>
+        <span style="font-family:monospace;font-size:10px;color:#58a6ff;font-weight:700">${o.sku}</span>
+        <span style="margin-left:auto;font-size:10px;font-weight:700;color:${slaColor}">${o.qty_chk||o.qty_dec||0} u</span>
+      </div>
+      <div style="font-size:9px;color:#c9d1d9;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+      <div style="display:flex;gap:8px;font-size:8px;color:#8b949e">
+        <span>⏱ ${espera} esperando</span>
+        <span style="color:${slaColor}">${restTxt}</span>
+      </div>
+    </div>`;
+  }
+
+  function mkSection(label, color, items, icon){
+    if(!items.length) return '';
+    return `<div style="padding:6px 10px;background:#0d1117;font-size:9px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;z-index:1">
+      ${icon} ${label} (${items.length})
+    </div>${items.map(mkCard).join('')}`;
+  }
+
+  body.innerHTML=
+    mkSection('Sobre SLA','#f85149',over,'🔴')+
+    mkSection('En Riesgo','#e3b341',warn,'⚠️')+
+    mkSection('En Putaway Activo','#58a6ff',active,'📦')+
+    mkSection('En Tiempo','#3fb950',ok,'🟢')||
+    `<div style="color:#3fb950;font-size:11px;padding:20px;text-align:center">✓ Sin items pendientes</div>`;
 }
 
 function chkToggle(f){
@@ -1646,8 +1712,17 @@ function chkRender(){
   }
 }
 
+function chkClearSel(){
+  CHK_SEL=null;
+  document.querySelectorAll('#chk-tbody tr').forEach(tr=>tr.classList.remove('chk-sel'));
+  document.getElementById('chk-det-hdr').textContent='Detalle';
+  renderPutawaySLA();
+}
+
 function chkSelItem(o){
-  CHK_SEL = o.sku+o.chk_ts;
+  const key=o.sku+o.chk_ts;
+  if(CHK_SEL===key){ chkClearSel(); return; }
+  CHK_SEL = key;
   document.querySelectorAll('#chk-tbody tr').forEach(tr=>{
     const skuEl=tr.querySelector('span[style*="58a6ff"]');
     tr.classList.toggle('chk-sel', skuEl&&skuEl.textContent===o.sku);
