@@ -72,7 +72,7 @@ def generate(dias=1):
     FROM `{PROJECT}.WHOWNER.BT_FBM_INBOUND_OPERATION` op
     LEFT JOIN `{PROJECT}.WHOWNER.BT_FBM_PUTAWAY` pw
       ON pw.PUTAWAY_ID = op.PUTAWAY_ID
-      AND pw.AUD_INS_DT >= '{desde}'
+      AND pw.AUD_INS_DT >= DATE_SUB('{desde}', INTERVAL 7 DAY)
     WHERE op.WAREHOUSE_ID = '{WH}'
       AND op.SIT_SITE_ID  = 'MLC'
       AND op.AUD_INS_DT  >= '{desde}'
