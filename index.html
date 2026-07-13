@@ -1633,7 +1633,16 @@ async function loadCheckin(){
       document.getElementById('ck-upd').textContent=d.updated||'—';
     }
     if(r2.ok){ const d=await r2.json(); INB_DATA=d.shipments||[]; }
-    if(r3.ok){ const d=await r3.json(); PW_DATA=d.movables||[]; PW_UPDATED=d.updated||''; }
+    if(r3.ok){
+      const d=await r3.json();
+      PW_DATA=d.movables||[];
+      PW_UPDATED=d.updated||'';
+      // Propagar is_nt a CHK_DATA por IS: si un movable NT pertenece al mismo IS, marcar items como NT
+      const ntIsSet=new Set(PW_DATA.filter(g=>g.is_nt).map(g=>String(g.is_id||'')).filter(Boolean));
+      CHK_DATA.forEach(o=>{
+        if(!o.is_nt && ntIsSet.has(String(o.inbound_id||o.is_id||''))) o.is_nt=true;
+      });
+    }
     chkRender();
     renderPutawaySLA();
     if(SUG_READY) renderColaPendiente();
