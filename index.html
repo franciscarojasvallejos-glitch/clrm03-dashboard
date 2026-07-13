@@ -1600,8 +1600,9 @@ function renderPutawaySLA(){
   const byMovable={};
   pending.forEach(o=>{
     const mv=o.movable||'(sin movable)';
-    if(!byMovable[mv]) byMovable[mv]={movable:mv, items:[], maxSla:'ok', minRestantes:null, is_id:o.is_id||''};
+    if(!byMovable[mv]) byMovable[mv]={movable:mv, items:[], maxSla:'ok', minRestantes:null, is_id:o.is_id||'', is_nt:false};
     byMovable[mv].items.push(o);
+    if(o.is_nt) byMovable[mv].is_nt=true;
     const slaPrio={'over':0,'warn':1,'pw_active':2,'ok':3,'unknown':4};
     if((slaPrio[o.sla]??5)<(slaPrio[byMovable[mv].maxSla]??5)) byMovable[mv].maxSla=o.sla;
     if(o.mins_restantes!=null&&(byMovable[mv].minRestantes===null||o.mins_restantes<byMovable[mv].minRestantes))
@@ -1610,7 +1611,7 @@ function renderPutawaySLA(){
 
   const groups=Object.values(byMovable).sort((a,b)=>{
     // 1. NT primero (van a RK/BL — prioridad del tablero)
-    const na=a.movable.includes('-NT-')?0:1, nb=b.movable.includes('-NT-')?0:1;
+    const na=a.is_nt?0:1, nb=b.is_nt?0:1;
     if(na!==nb) return na-nb;
     // 2. Por vencimiento: los que vencen antes arriba (retrasados = negativo = primero)
     //    Si no tiene mins_restantes, va al final
@@ -1625,7 +1626,7 @@ function renderPutawaySLA(){
   const over=groups.filter(g=>g.maxSla==='over').length;
   const warn=groups.filter(g=>g.maxSla==='warn').length;
   const active=groups.filter(g=>g.maxSla==='pw_active').length;
-  const ntCount=groups.filter(g=>g.movable.includes('-NT-')).length;
+  const ntCount=groups.filter(g=>g.is_nt).length;
 
   hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
     <span style="color:#e3b341;font-weight:700">📦 Putaway por Guardar</span>
@@ -1665,7 +1666,7 @@ function renderPutawaySLA(){
 
   function mkMovableCard(g){
     const col=slaColor(g.maxSla);
-    const isNT=g.movable.includes('-NT-');
+    const isNT=g.is_nt||g.movable.includes('-NT-');
     const ntBadge=isNT?`<span style="padding:1px 5px;border-radius:6px;background:#1a2a4a;color:#58a6ff;font-size:8px;border:1px solid #1f6feb;font-weight:700">NT</span>`:'';
     const restTxt=g.minRestantes!=null
       ?(g.minRestantes<0
@@ -1714,7 +1715,7 @@ function renderPutawaySLA(){
       lastBucket=bk.key;
       const bkGs=visGroups.filter(x=>expiryBucket(x.minRestantes).key===bk.key);
       const bkUnits=bkGs.reduce((s,x)=>s+x.items.reduce((ss,o)=>ss+(o.qty_chk||o.qty_dec||0),0),0);
-      const bkNT=bkGs.filter(x=>x.movable.includes('-NT-')).length;
+      const bkNT=bkGs.filter(x=>x.is_nt||x.movable.includes('-NT-')).length;
       html+=`<div style="padding:5px 10px;background:#161b22;border-bottom:1px solid #30363d;position:sticky;top:0;z-index:2">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:10px;font-weight:700;color:${bk.col}">${bk.icon} ${bk.label}</span>
@@ -1742,7 +1743,7 @@ function pwFilterMovable(mv){
       return acc;
     },{})
   )[0]||{};
-  const isNT=mv.includes('-NT-');
+  const isNT=mv.includes('-NT-')||CHK_DATA.some(o=>o.movable===mv&&o.is_nt);
   const hdr=document.getElementById('chk-det-hdr');
   hdr.innerHTML=`
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1894,7 +1895,7 @@ function chkRender(){
     if(o.sla==='done'      && !done) return false;
     if(o.sla==='over'      && !over) return false;
     if((o.sla==='ok'||o.sla==='warn'||o.sla==='unknown'||o.sla==='pw_active') && !pend) return false;
-    if(nt && !(o.address||'').toUpperCase().includes('-NT-')) return false;
+    if(nt && !o.is_nt) return false;
     if(q && !o.sku.toLowerCase().includes(q) && !(o.inbound_id||'').includes(q) &&
        !(o.seller||'').toLowerCase().includes(q) &&
        !(CATALOG[o.sku]||{}).title?.toLowerCase().includes(q)) return false;
@@ -1913,7 +1914,7 @@ function chkRender(){
       <td style="font-weight:700;color:#e3b341;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
       <td style="font-size:9px;color:#8b949e;white-space:nowrap">${o.chk_ts||'—'}</td>
       <td style="font-size:9px;color:#8b949e;white-space:nowrap">${o.pw_fin_ts||o.pw_inicio_ts||'—'}</td>
-      <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?(o.movable.includes('-NT-')?'#58a6ff':'#3fb950'):'#484f58'}">${o.movable||'—'}</span></td>
+      <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?((o.is_nt||o.movable.includes('-NT-'))?'#58a6ff':'#3fb950'):'#484f58'}">${o.movable||'—'}</span></td>
       <td style="font-size:9px;color:#8b949e">${o.seller||'—'}</td>
       <td style="font-size:9px;color:#484f58;font-family:monospace">${o.inbound_id||'—'}</td>
     </tr>`;

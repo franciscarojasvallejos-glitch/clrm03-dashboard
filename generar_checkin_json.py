@@ -68,11 +68,15 @@ def generate(dias=1):
       op.INB_SHIPMENT_TYPE                       AS tipo,
       pw.ADDRESS_FROM                            AS movable,
       pw.SOURCE_PROCESS_ID                       AS is_id,
-      pw.FBM_USER_ID                             AS pw_user_wms
+      pw.FBM_USER_ID                             AS pw_user_wms,
+      COALESCE(s.TOTABILITY, 'unknown')          AS totability
     FROM `{PROJECT}.WHOWNER.BT_FBM_INBOUND_OPERATION` op
     LEFT JOIN `{PROJECT}.WHOWNER.BT_FBM_PUTAWAY` pw
       ON pw.PUTAWAY_ID = op.PUTAWAY_ID
       AND pw.AUD_INS_DT >= '{desde}'
+    LEFT JOIN `{PROJECT}.WHOWNER.DM_SHP_ICQA_SKU_DETAILS` s
+      ON op.INVENTORY_ID = s.INVENTORY_ID
+      AND s.SIT_SITE_ID = 'MLC'
     WHERE op.WAREHOUSE_ID = '{WH}'
       AND op.SIT_SITE_ID  = 'MLC'
       AND op.AUD_INS_DT  >= '{desde}'
@@ -164,6 +168,8 @@ def generate(dias=1):
             'mins_restantes':   mins_restantes,
             'en_putaway':       en_putaway,
             'sla':              sla,
+            'totability':       r.totability or 'unknown',
+            'is_nt':            (r.totability or '') == 'no_totable',
         })
 
     en_pw      = sum(1 for x in items if x['en_putaway'])
