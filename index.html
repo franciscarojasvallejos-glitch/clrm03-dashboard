@@ -1557,6 +1557,7 @@ let CHK_AUTO=null;
 let INB_DATA=[];   // IS-level NT inbound
 let PW_DATA=[];    // movables pendientes de putaway (BT_FBM_PUTAWAY)
 let PW_VIEW='movable'; // 'movable' | 'is'
+let PW_SLA_FILTER='all'; // 'all' | 'over' | 'warn' | 'ok' | 'nt'
 
 async function loadCheckin(){
   try{
@@ -1594,7 +1595,19 @@ function renderPutawaySLA(){
 
   // Usar PW_DATA (BT_FBM_PUTAWAY) como fuente de movables pendientes
   const src = PW_DATA.length ? PW_DATA : [];
-  const groups = [...src].sort((a,b)=>{
+
+  // Totales globales (antes de filtrar)
+  const over=src.filter(g=>g.sla==='over').length;
+  const warn=src.filter(g=>g.sla==='warn').length;
+  const active=src.filter(g=>g.pw_status==='WAITING_FINISH').length;
+  const ntCount=src.filter(g=>g.is_nt).length;
+
+  // Aplicar filtro SLA
+  const filtered = PW_SLA_FILTER==='all' ? src
+    : PW_SLA_FILTER==='nt'   ? src.filter(g=>g.is_nt)
+    : src.filter(g=>g.sla===PW_SLA_FILTER);
+
+  const groups = [...filtered].sort((a,b)=>{
     const na=a.is_nt?0:1, nb=b.is_nt?0:1;
     if(na!==nb) return na-nb;
     const ra=a.mins_restantes??999999, rb=b.mins_restantes??999999;
@@ -1602,26 +1615,30 @@ function renderPutawaySLA(){
     return (b.mins_since_chk||0)-(a.mins_since_chk||0);
   });
 
-  const over=groups.filter(g=>g.sla==='over').length;
-  const warn=groups.filter(g=>g.sla==='warn').length;
-  const active=groups.filter(g=>g.pw_status==='WAITING_FINISH').length;
-  const ntCount=groups.filter(g=>g.is_nt).length;
+  const totalSkus=filtered.reduce((s,g)=>s+(g.sku_count||0),0);
 
-  const totalSkus=groups.reduce((s,g)=>s+(g.sku_count||0),0);
+  function slaBtn(val, label, col){
+    const active=PW_SLA_FILTER===val;
+    return `<button onclick="pwSetSLA('${val}')" style="font-size:8px;padding:2px 6px;border-radius:10px;border:1px solid ${active?col:'#30363d'};background:${active?col+'22':'transparent'};color:${active?col:'#8b949e'};cursor:pointer;white-space:nowrap">${label}</button>`;
+  }
+
   hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
     <span style="color:#e3b341;font-weight:700">📦 Putaway por Guardar</span>
-    <span style="font-size:8px;color:#484f58">${groups.length} movables · ${totalSkus} SKUs</span>
+    <span style="font-size:8px;color:#484f58">${src.length} movables · ${src.reduce((s,g)=>s+(g.sku_count||0),0)} SKUs</span>
   </div>
-  <div style="display:flex;gap:6px;margin-top:6px;font-size:9px;flex-wrap:wrap">
-    <span style="color:#f85149">🔴 ${over} vencidos</span>
-    <span style="color:#e3b341">⚠️ ${warn} en riesgo</span>
-    <span style="color:#58a6ff">📦 ${active} en proceso</span>
-    <span style="color:#58a6ff;border:1px solid #1f6feb;padding:0 4px;border-radius:4px">NT ${ntCount}</span>
-    ${PW_MOVABLE_FILTER?`<button onclick="pwClearFilter()" style="margin-left:auto;font-size:8px;padding:1px 6px;border-radius:8px;background:#30363d;color:#c9d1d9;border:none;cursor:pointer">✕ Limpiar filtro</button>`:''}
+  <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+    ${slaBtn('all','Todos','#8b949e')}
+    ${slaBtn('over','🔴 '+over+' Vencidos','#f85149')}
+    ${slaBtn('warn','⚠️ '+warn+' En riesgo','#e3b341')}
+    ${slaBtn('ok','🟢 OK','#3fb950')}
+    ${slaBtn('nt','NT '+ntCount,'#58a6ff')}
   </div>
-  <div style="display:flex;gap:4px;margin-top:8px">
+  <div style="font-size:8px;color:#484f58;margin-top:4px">${groups.length} mostrando · ${totalSkus} SKUs · ${active} en proceso
+    ${PW_MOVABLE_FILTER?` · <button onclick="pwClearFilter()" style="font-size:8px;padding:1px 5px;border-radius:6px;background:#30363d;color:#c9d1d9;border:none;cursor:pointer">✕ Limpiar</button>`:''}
+  </div>
+  <div style="display:flex;gap:4px;margin-top:6px">
     <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='movable'?'#58a6ff':'#30363d'};background:${PW_VIEW==='movable'?'#1a2a4a':'transparent'};color:${PW_VIEW==='movable'?'#58a6ff':'#8b949e'};cursor:pointer">Por Movable</button>
-    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#58a6ff':'#30363d'};background:${PW_VIEW==='is'?'#1a2a4a':'transparent'};color:${PW_VIEW==='is'?'#58a6ff':'#8b949e'};cursor:pointer">Por IS (NT)</button>
+    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#58a6ff':'#30363d'};background:${PW_VIEW==='is'?'#1a2a4a':'transparent'};color:${PW_VIEW==='is'?'#58a6ff':'#8b949e'};cursor:pointer">Por IS</button>
   </div>`;
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
@@ -1748,6 +1765,11 @@ function pwClearFilter(){
 
 function pwSetView(v){
   PW_VIEW=v;
+  renderPutawaySLA();
+}
+
+function pwSetSLA(v){
+  PW_SLA_FILTER=v;
   renderPutawaySLA();
 }
 
