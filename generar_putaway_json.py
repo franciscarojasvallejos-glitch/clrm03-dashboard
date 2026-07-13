@@ -24,7 +24,8 @@ def generate():
     now  = datetime.now(tz=ZoneInfo('America/Santiago'))
     tz   = ZoneInfo('America/Santiago')
     from datetime import timezone as _tz
-    now_utc = datetime.now(tz=_tz.utc).replace(tzinfo=None)  # UTC naive para comparar con BQ DATETIME
+    now_utc   = datetime.now(tz=_tz.utc).replace(tzinfo=None)  # UTC naive — para mins_restantes
+    now_naive = now.replace(tzinfo=None)                        # Chile local — para mins_en_proceso (igual que WMS)
     desde = (now - timedelta(days=60)).strftime('%Y-%m-%d')
 
     print(f"[{now.strftime('%H:%M:%S')}] Generando putaway pendiente {WH}...", flush=True)
@@ -90,11 +91,13 @@ def generate():
         is_nt = '-NT-' in (r.movable or '')
         inb   = is_data.get(r.is_id, None)
 
-        # PW_CREATED_DATETIME está en UTC en BigQuery — usar now_utc para comparar
+        # PW_CREATED_DATETIME está en UTC en BigQuery
+        # mins_en_proceso: WMS usa hora_chile_ahora - pw_created_utc (sin ajuste de zona)
+        # mins_restantes: deadline_utc - now_utc (correcto en UTC puro)
         pw_dt = r.pw_created_dt
         if pw_dt:
             pw_utc = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
-            mins_en_proceso = int((now_utc - pw_utc).total_seconds() / 60)
+            mins_en_proceso = int((now_naive - pw_utc).total_seconds() / 60)  # Chile - UTC = como WMS
             deadline = pw_utc + timedelta(minutes=SLA_WARN)
             mins_restantes = int((deadline - now_utc).total_seconds() / 60)
             sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
