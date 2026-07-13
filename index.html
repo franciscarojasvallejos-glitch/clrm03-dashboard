@@ -329,6 +329,7 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 <div id="chk-view">
   <div id="chk-toolbar">
     <input id="chk-search" type="text" placeholder="Buscar SKU, shipment, usuario…" oninput="chkFiltrar()">
+    <button id="chk-sort-btn" onclick="chkToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;cursor:pointer;white-space:nowrap">↑ Mayor</button>
     <button class="chk-filter-btn on f-pend" id="chk-f-pend" onclick="chkToggle('pend')">⏳ Pendientes</button>
     <button class="chk-filter-btn on f-over" id="chk-f-over" onclick="chkToggle('over')">🔴 Sobre SLA</button>
     <button class="chk-filter-btn on f-done" id="chk-f-done" onclick="chkToggle('done')">✓ Completados</button>
@@ -1553,6 +1554,7 @@ function buscarSugerencia(){
 // ── Check-in & Putaway ───────────────────────────────────────────────────
 let CHK_DATA=[], CHK_SEL=null;
 let CHK_FILTER={q:'', pend:true, over:true, done:true, nt:false};
+let CHK_SORT='asc'; // 'asc' = más vencidos primero, 'desc' = más tiempo restante primero
 let CHK_AUTO=null;
 let INB_DATA=[];   // IS-level NT inbound
 let PW_DATA=[];    // movables pendientes de putaway (BT_FBM_PUTAWAY)
@@ -1925,6 +1927,11 @@ function chkFiltrar(){
   chkRender();
 }
 
+function chkToggleSort(){
+  CHK_SORT = CHK_SORT==='asc' ? 'desc' : 'asc';
+  chkRender();
+}
+
 function fmtHoras(mins){
   if(mins==null) return '—';
   const h=Math.floor(Math.abs(mins)/60), m=Math.abs(mins)%60;
@@ -1962,6 +1969,15 @@ function chkRender(){
        !(CATALOG[o.sku]||{}).title?.toLowerCase().includes(q)) return false;
     return true;
   });
+
+  // Ordenar por mins_restantes
+  list.sort((a,b)=>{
+    const ra=a.mins_restantes??999999, rb=b.mins_restantes??999999;
+    return CHK_SORT==='asc' ? ra-rb : rb-ra;
+  });
+
+  const btn=document.getElementById('chk-sort-btn');
+  if(btn) btn.textContent = CHK_SORT==='asc' ? '↑ Mayor' : '↓ Menor';
 
   const tbody=document.getElementById('chk-tbody');
   tbody.innerHTML=list.slice(0,300).map(o=>{
