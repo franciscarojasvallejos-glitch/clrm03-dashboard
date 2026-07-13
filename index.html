@@ -1714,58 +1714,23 @@ function renderPutawaySLA(){
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
-  function slaColor(sla){return sla==='over'?'#F23D4F':sla==='warn'?'#F5A623':sla==='pw_active'?'#3483FA':'#00A650';}
-  function slaIcon(sla){return sla==='over'?'🔴':sla==='warn'?'⚠️':sla==='pw_active'?'📦':'🟢';}
-
-  // Calcula bucket de vencimiento por hora para separadores
-  function expiryBucket(minRestantes){
-    if(minRestantes==null) return {key:'z_sin_sla',label:'Sin SLA',col:'#999999',icon:'—'};
-    if(minRestantes<0) return {key:'a_retrasado',label:'Retrasado',col:'#F23D4F',icon:'🔴'};
-    const exp=new Date(Date.now()+minRestantes*60000);
-    const h=exp.getHours();
-    const hh=String(h).padStart(2,'0');
-    const isToday=exp.toDateString()===new Date().toDateString();
-    const dayStr=isToday?'Hoy':'Mañana';
-    const key=`b_${exp.toDateString()}_${hh}`;
-    const col=minRestantes<1440?'#F5A623':'#00A650';
-    const icon=minRestantes<1440?'⚠️':'🟢';
-    return {key,label:`${dayStr} ${hh}:00`,col,icon};
+  // Agrupar por hora de appointment (igual que WMS)
+  function apptSlot(g){
+    if(!g.appointment || g.mins_restantes==null || g.mins_restantes<0)
+      return {key:'__retrasado', label:'Retrasado', hora:null};
+    // appointment: "2026-07-13 10:00"
+    const hora=g.appointment.slice(11,16); // "10:00"
+    return {key: hora, label: hora+'hr', hora};
   }
 
-  function mkMovableCard(g){
-    const col=slaColor(g.sla);
-    const isNT=g.is_nt;
-    const ntBadge=isNT?`<span style="padding:1px 5px;border-radius:6px;background:#EBF2FF;color:#3483FA;font-size:8px;border:1px solid #2968C8;font-weight:700">NT</span>`:'';
-    const restTxt=g.mins_restantes!=null
-      ?(g.mins_restantes<0
-        ?`<span style="color:#F23D4F;font-weight:700">vencido ${fmtHoras(Math.abs(g.mins_restantes))}</span>`
-        :`<span style="color:${col}">${fmtHoras(g.mins_restantes)} restantes</span>`)
-      :'';
-    const isActive=PW_MOVABLE_FILTER===g.movable;
-    const tipo=g.shipment_type==='ftl'?'FTL':g.shipment_type==='pickup'?'Colecta':g.shipment_type==='supplier'?'Proveedor':(g.shipment_type||'');
-    const inProceso=g.pw_status==='WAITING_FINISH';
-    return `<div onclick="pwFilterMovable('${g.movable}')" style="padding:8px 10px;border-bottom:1px solid #F5F5F5;cursor:pointer;
-      border-left:3px solid ${isNT?'#3483FA':col};background:${isActive?'#F5F5F5':'transparent'};transition:background .1s"
-      onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background='${isActive?'#F5F5F5':'transparent'}'">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        ${ntBadge}
-        ${inProceso?`<span style="font-size:7px;padding:1px 4px;border-radius:4px;background:#E6F7EE;color:#00A650;border:1px solid #00A650">EN PROCESO</span>`:''}
-        <span style="font-family:monospace;font-size:10px;color:#FFFFFF;font-weight:700">${g.movable}</span>
-        ${tipo?`<span style="margin-left:auto;font-size:8px;color:#999999;background:#F5F5F5;padding:1px 4px;border-radius:3px">${tipo}</span>`:''}
-      </div>
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        <span style="font-size:9px;color:#999999">IS</span>
-        <span style="font-family:monospace;font-size:10px;color:#F5A623;font-weight:700">${g.is_id||'—'}</span>
-        <span style="color:#333333;font-size:9px;font-weight:700;margin-left:auto">${g.qty_checkin||0} u</span>
-        <span style="color:#999999;font-size:9px">${g.sku_count||0} SKUs</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
-        <span style="font-size:8px;color:#999999">⏱ En proceso: <b style="color:#666666">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</b></span>
-        ${g.appointment?`<span style="font-size:8px;color:#999999;margin-left:auto">Appt: <b style="color:#666666">${g.appointment.slice(5,16)}</b></span>`:''}
-      </div>
-      ${restTxt?`<div style="font-size:9px;font-weight:700;margin-bottom:3px">${restTxt}</div>`:''}
-      ${g.seller?`<div style="font-size:8px;color:#999999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.seller}</div>`:''}
-    </div>`;
+  function slaBadge(mins){
+    if(mins==null) return `<span style="font-size:9px;color:#999999">—</span>`;
+    const abs=Math.abs(mins);
+    const h=Math.floor(abs/60), m=abs%60;
+    const txt=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}hr`;
+    if(mins<0) return `<span style="display:inline-block;padding:2px 7px;border-radius:12px;background:#F23D4F;color:#fff;font-size:9px;font-weight:700">${txt}</span>`;
+    const bg=mins<360?'#FF7A00':mins<720?'#F5A623':'#00A650';
+    return `<span style="display:inline-block;padding:2px 7px;border-radius:12px;background:${bg};color:#fff;font-size:9px;font-weight:700">${txt}</span>`;
   }
 
   const visGroups=PW_MOVABLE_FILTER
@@ -1777,25 +1742,79 @@ function renderPutawaySLA(){
     return;
   }
 
-  // Renderizar con separadores por hora de vencimiento
-  let html='';
-  let lastBucket='';
+  // Agrupar y ordenar slots: retrasado primero, luego por hora
+  const slotMap={};
   visGroups.forEach(g=>{
-    const bk=expiryBucket(g.minRestantes);
-    if(bk.key!==lastBucket){
-      lastBucket=bk.key;
-      const bkGs=visGroups.filter(x=>expiryBucket(x.minRestantes).key===bk.key);
-      const bkUnits=bkGs.reduce((s,x)=>s+(x.qty_checkin||0),0);
-      const bkNT=bkGs.filter(x=>x.is_nt).length;
-      html+=`<div style="padding:5px 10px;background:#FFFFFF;border-bottom:1px solid #D9D9D9;position:sticky;top:0;z-index:2">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:10px;font-weight:700;color:${bk.col}">${bk.icon} ${bk.label}</span>
-          <span style="font-size:8px;color:#999999;margin-left:auto">${bkGs.length} movables · ${bkUnits} u${bkNT?` · <span style="color:#3483FA">${bkNT} NT</span>`:''}</span>
-        </div>
-      </div>`;
-    }
-    html+=mkMovableCard(g);
+    const s=apptSlot(g);
+    if(!slotMap[s.key]) slotMap[s.key]={...s, items:[]};
+    slotMap[s.key].items.push(g);
   });
+  const slotKeys=Object.keys(slotMap).sort((a,b)=>{
+    if(a==='__retrasado') return -1;
+    if(b==='__retrasado') return 1;
+    return a.localeCompare(b);
+  });
+
+  // Tabla estilo WMS
+  let html=`<table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr style="background:#F5F5F5;border-bottom:2px solid #D9D9D9;text-align:left">
+      <th style="padding:6px 10px;color:#666666;font-weight:600;white-space:nowrap">Movable</th>
+      <th style="padding:6px 8px;color:#666666;font-weight:600">SLA ↑</th>
+      <th style="padding:6px 8px;color:#666666;font-weight:600;white-space:nowrap">En proceso</th>
+      <th style="padding:6px 8px;color:#666666;font-weight:600">IS</th>
+      <th style="padding:6px 8px;color:#666666;font-weight:600">Tipo</th>
+      <th style="padding:6px 8px;color:#666666;font-weight:600">Seller</th>
+      <th style="padding:6px 8px;color:#666666;font-weight:600">Unid.</th>
+    </tr></thead>
+    <tbody>`;
+
+  slotKeys.forEach(key=>{
+    const slot=slotMap[key];
+    const slotUnits=slot.items.reduce((s,g)=>s+(g.qty_checkin||0),0);
+    const slotNT=slot.items.filter(g=>g.is_nt).length;
+    const slotWorking=slot.items.filter(g=>g.pw_status==='WAITING_FINISH').length;
+    const isRetrasado=key==='__retrasado';
+    const slotColor=isRetrasado?'#F23D4F':'#3483FA';
+    const sampleMins=slot.items[0]?.mins_restantes;
+    const tiempoRest=isRetrasado
+      ?`<span style="color:#F23D4F;font-weight:700">${slot.items[0]?.mins_restantes!=null?fmtHoras(Math.abs(slot.items[0].mins_restantes))+' retraso':'Retrasado'}</span>`
+      :(sampleMins!=null?slaBadge(sampleMins):'');
+
+    html+=`<tr style="background:#EBF2FF;border-top:2px solid #D9D9D9;border-bottom:1px solid #D9D9D9">
+      <td colspan="7" style="padding:6px 10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-weight:700;color:${slotColor};font-size:12px">${isRetrasado?'⚠ Retrasado':slot.label} <span style="font-weight:400;font-size:10px;color:#666666">(${slot.items.length} movables)</span></span>
+          <span style="font-size:10px;color:#666666">${tiempoRest}</span>
+          <span style="font-size:10px;color:#999999;margin-left:auto">${slotUnits.toLocaleString()} un.${slotNT?` · <b style="color:#3483FA">${slotNT} NT</b>`:''}${slotWorking?` · <b style="color:#00A650">${slotWorking} trabajando</b>`:' · <span style="color:#999">Em espera</span>'}</span>
+        </div>
+      </td>
+    </tr>`;
+
+    slot.items.forEach(g=>{
+      const isActive=PW_MOVABLE_FILTER===g.movable;
+      const tipo=g.shipment_type==='ftl'?'FTL':g.shipment_type==='pickup'?'Colecta':g.shipment_type==='supplier'?'Proveedor':(g.shipment_type||'—');
+      const created=g.pw_created?g.pw_created.slice(5,10):'';
+      html+=`<tr onclick="pwFilterMovable('${g.movable}')" style="border-bottom:1px solid #F0F0F0;cursor:pointer;background:${isActive?'#EBF2FF':'#FFFFFF'}"
+        onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background='${isActive?'#EBF2FF':'#FFFFFF'}'">
+        <td style="padding:7px 10px;white-space:nowrap">
+          <div style="font-family:monospace;font-size:10px;font-weight:700;color:#3483FA">${g.movable}</div>
+          <div style="font-size:9px;color:#999999;display:flex;gap:4px;align-items:center;margin-top:1px">
+            ${created}
+            ${g.is_nt?`<span style="padding:0 4px;border-radius:4px;background:#EBF2FF;color:#3483FA;font-size:8px;border:1px solid #3483FA;font-weight:700">NT</span>`:''}
+            ${g.pw_status==='WAITING_FINISH'?`<span style="padding:0 4px;border-radius:4px;background:#E6F7EE;color:#00A650;font-size:8px;border:1px solid #00A650">trabajando</span>`:''}
+          </div>
+        </td>
+        <td style="padding:7px 8px;white-space:nowrap">${slaBadge(g.mins_restantes)}</td>
+        <td style="padding:7px 8px;color:#666666;white-space:nowrap">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</td>
+        <td style="padding:7px 8px;font-family:monospace;font-weight:700;color:#F5A623;font-size:10px">${g.is_id||'—'}</td>
+        <td style="padding:7px 8px;color:#999999;font-size:10px">${tipo}</td>
+        <td style="padding:7px 8px;color:#666666;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.seller||'—'}</td>
+        <td style="padding:7px 8px;font-weight:700;color:#333333;text-align:right">${(g.qty_checkin||0).toLocaleString()}</td>
+      </tr>`;
+    });
+  });
+
+  html+='</tbody></table>';
   body.innerHTML=html;
 }
 
