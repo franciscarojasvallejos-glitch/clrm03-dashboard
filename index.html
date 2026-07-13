@@ -1749,14 +1749,17 @@ function renderPutawaySLA(){
         <span style="font-family:monospace;font-size:10px;color:#e6edf3;font-weight:700">${g.movable}</span>
         ${tipo?`<span style="margin-left:auto;font-size:8px;color:#484f58;background:#21262d;padding:1px 4px;border-radius:3px">${tipo}</span>`:''}
       </div>
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
         <span style="font-size:9px;color:#484f58">IS</span>
         <span style="font-family:monospace;font-size:10px;color:#e3b341;font-weight:700">${g.is_id||'—'}</span>
-        <span style="margin-left:auto;font-size:9px;color:#8b949e">⏱ ${fmtHoras(g.mins_since_chk)}</span>
-        <span style="color:#c9d1d9;font-size:9px;font-weight:700">${g.qty_checkin||0} u</span>
+        <span style="color:#c9d1d9;font-size:9px;font-weight:700;margin-left:auto">${g.qty_checkin||0} u</span>
         <span style="color:#484f58;font-size:9px">${g.sku_count||0} SKUs</span>
       </div>
-      ${restTxt?`<div style="margin-bottom:3px">${restTxt}</div>`:''}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+        <span style="font-size:8px;color:#484f58">⏱ En proceso: <b style="color:#8b949e">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</b></span>
+        ${g.appointment?`<span style="font-size:8px;color:#484f58;margin-left:auto">Appt: <b style="color:#8b949e">${g.appointment.slice(5,16)}</b></span>`:''}
+      </div>
+      ${restTxt?`<div style="font-size:9px;font-weight:700;margin-bottom:3px">${restTxt}</div>`:''}
       ${g.seller?`<div style="font-size:8px;color:#484f58;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.seller}</div>`:''}
     </div>`;
   }

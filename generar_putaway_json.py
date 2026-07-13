@@ -23,7 +23,7 @@ SLA_WARN = 48 * 60  # 48h en minutos
 def generate():
     now  = datetime.now(tz=ZoneInfo('America/Santiago'))
     tz   = ZoneInfo('America/Santiago')
-    desde = (now - timedelta(days=7)).strftime('%Y-%m-%d')
+    desde = (now - timedelta(days=60)).strftime('%Y-%m-%d')
 
     print(f"[{now.strftime('%H:%M:%S')}] Generando putaway pendiente {WH}...", flush=True)
     client = bigquery.Client(project=PROJECT)
@@ -88,31 +88,35 @@ def generate():
         is_nt = '-NT-' in (r.movable or '')
         inb   = is_data.get(r.is_id, None)
 
-        # SLA desde checkin más antiguo del IS
-        oldest = inb.oldest_chk if inb else None
-        if oldest:
-            if isinstance(oldest, datetime):
-                oldest_naive = oldest.replace(tzinfo=None)
-            else:
-                oldest_naive = datetime.fromisoformat(str(oldest)).replace(tzinfo=None)
-            mins_since = int((now.replace(tzinfo=None) - oldest_naive).total_seconds() / 60)
-            mins_restantes = SLA_WARN - mins_since
-            sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 1440 else 'ok')
+        now_naive = now.replace(tzinfo=None)
+
+        # Tiempo en proceso: desde creación del movable en BT_FBM_PUTAWAY
+        pw_dt = r.pw_created_dt
+        if pw_dt:
+            pw_naive = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
+            mins_en_proceso = int((now_naive - pw_naive).total_seconds() / 60)
         else:
-            # SLA desde creación del putaway
-            pw_dt = r.pw_created_dt
-            if pw_dt:
-                if isinstance(pw_dt, datetime):
-                    pw_naive = pw_dt.replace(tzinfo=None)
-                else:
-                    pw_naive = datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
-                mins_since = int((now.replace(tzinfo=None) - pw_naive).total_seconds() / 60)
-                mins_restantes = SLA_WARN - mins_since
-                sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 1440 else 'ok')
+            mins_en_proceso = None
+
+        # SLA = appointment_dt del IS - now  (igual que WMS)
+        # Si no hay appointment, fallback a oldest_chk + SLA_WARN
+        appt = inb.appointment_dt if inb else None
+        if appt:
+            appt_naive = appt.replace(tzinfo=None) if isinstance(appt, datetime) else datetime.fromisoformat(str(appt)).replace(tzinfo=None)
+            mins_restantes = int((appt_naive - now_naive).total_seconds() / 60)
+            sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
+        else:
+            oldest = inb.oldest_chk if inb else None
+            if oldest:
+                oldest_naive = oldest.replace(tzinfo=None) if isinstance(oldest, datetime) else datetime.fromisoformat(str(oldest)).replace(tzinfo=None)
+                mins_since_chk = int((now_naive - oldest_naive).total_seconds() / 60)
+                mins_restantes = SLA_WARN - mins_since_chk
+                sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
             else:
-                mins_since = None
                 mins_restantes = None
                 sla = 'unknown'
+
+        mins_since = mins_en_proceso  # alias para compatibilidad con dashboard
 
         items.append({
             'movable':        r.movable or '',
@@ -128,6 +132,7 @@ def generate():
             'appointment':    fmt(inb.appointment_dt) if inb else None,
             'arrival':        fmt(inb.arrival_dt) if inb else None,
             'pw_created':     fmt(r.pw_created_dt),
+            'mins_en_proceso': mins_en_proceso,
             'mins_since_chk': mins_since,
             'mins_restantes': mins_restantes,
             'sla':            sla,
