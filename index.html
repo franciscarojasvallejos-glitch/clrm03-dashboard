@@ -1664,21 +1664,28 @@ function renderPutawaySLA(){
   // Usar PW_DATA (BT_FBM_PUTAWAY) como fuente de movables pendientes
   const src = PW_DATA.length ? PW_DATA : [];
 
-  // Totales globales (antes de filtrar)
-  const over=src.filter(g=>g.sla==='over').length;
-  const warn=src.filter(g=>g.sla==='warn').length;
+  // Recalcular SLA en vivo para cada item (no depender del valor guardado en JSON)
+  function liveSla(g){
+    const m = g.appointment ? Math.round((new Date(g.appointment.replace(' ','T')).getTime()-Date.now())/60000) : g.mins_restantes;
+    if(m==null) return 'unknown';
+    return m<0?'over':m<120?'warn':'ok';
+  }
+
+  // Totales globales en vivo
+  const over=src.filter(g=>liveSla(g)==='over').length;
+  const warn=src.filter(g=>liveSla(g)==='warn').length;
   const active=src.filter(g=>g.pw_status==='WAITING_FINISH').length;
   const ntCount=src.filter(g=>g.is_nt).length;
 
-  // Aplicar filtro SLA
+  // Aplicar filtro SLA usando liveSla
   const filtered = PW_SLA_FILTER==='all' ? src
     : PW_SLA_FILTER==='nt'   ? src.filter(g=>g.is_nt)
-    : src.filter(g=>g.sla===PW_SLA_FILTER);
+    : src.filter(g=>liveSla(g)===PW_SLA_FILTER);
 
   const groups = [...filtered].sort((a,b)=>{
     const na=a.is_nt?0:1, nb=b.is_nt?0:1;
     if(na!==nb) return na-nb;
-    const ra=a.mins_restantes??999999, rb=b.mins_restantes??999999;
+    const ra=liveMins(a)??999999, rb=liveMins(b)??999999;
     if(ra!==rb) return PW_SORT==='asc' ? ra-rb : rb-ra;
     return (b.mins_since_chk||0)-(a.mins_since_chk||0);
   });
@@ -1714,9 +1721,18 @@ function renderPutawaySLA(){
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
+  // Recalcula mins_restantes en vivo desde el campo appointment (evita desfase por datos viejos)
+  function liveMins(g){
+    if(!g.appointment) return g.mins_restantes; // fallback al valor guardado
+    // appointment guardado como hora local Chile: "2026-07-13 10:00"
+    const apptDate = new Date(g.appointment.replace(' ','T'));
+    return Math.round((apptDate.getTime() - Date.now()) / 60000);
+  }
+
   // Agrupar por hora de appointment (igual que WMS)
   function apptSlot(g){
-    if(!g.appointment || g.mins_restantes==null || g.mins_restantes<0)
+    const mins = liveMins(g);
+    if(!g.appointment || mins==null || mins<0)
       return {key:'__retrasado', label:'Retrasado', hora:null};
     // appointment: "2026-07-13 10:00"
     const hora=g.appointment.slice(11,16); // "10:00"
@@ -1775,9 +1791,9 @@ function renderPutawaySLA(){
     const slotWorking=slot.items.filter(g=>g.pw_status==='WAITING_FINISH').length;
     const isRetrasado=key==='__retrasado';
     const slotColor=isRetrasado?'#F23D4F':'#3483FA';
-    const sampleMins=slot.items[0]?.mins_restantes;
+    const sampleMins=liveMins(slot.items[0]??{});
     const tiempoRest=isRetrasado
-      ?`<span style="color:#F23D4F;font-weight:700">${slot.items[0]?.mins_restantes!=null?fmtHoras(Math.abs(slot.items[0].mins_restantes))+' retraso':'Retrasado'}</span>`
+      ?`<span style="color:#F23D4F;font-weight:700">${sampleMins!=null?fmtHoras(Math.abs(sampleMins))+' retraso':'Retrasado'}</span>`
       :(sampleMins!=null?slaBadge(sampleMins):'');
 
     html+=`<tr style="background:#EBF2FF;border-top:2px solid #D9D9D9;border-bottom:1px solid #D9D9D9">
@@ -1804,7 +1820,7 @@ function renderPutawaySLA(){
             ${g.pw_status==='WAITING_FINISH'?`<span style="padding:0 4px;border-radius:4px;background:#E6F7EE;color:#00A650;font-size:8px;border:1px solid #00A650">trabajando</span>`:''}
           </div>
         </td>
-        <td style="padding:7px 8px;white-space:nowrap">${slaBadge(g.mins_restantes)}</td>
+        <td style="padding:7px 8px;white-space:nowrap">${slaBadge(liveMins(g))}</td>
         <td style="padding:7px 8px;color:#666666;white-space:nowrap">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</td>
         <td style="padding:7px 8px;font-family:monospace;font-weight:700;color:#F5A623;font-size:10px">${g.is_id||'—'}</td>
         <td style="padding:7px 8px;color:#999999;font-size:10px">${tipo}</td>
