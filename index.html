@@ -1895,28 +1895,56 @@ function renderInboundIS(){
 function chkRenderMovable(){
   const mv=CHK_FILTER._movable;
   const isId=CHK_FILTER._is_id||'';
-  // Buscar primero por movable, si no hay resultados buscar por IS
+  // Buscar primero por movable, luego por IS
   let list=CHK_DATA.filter(o=>o.sla!=='done'&&(o.movable||'')===mv);
   if(!list.length && isId){
     list=CHK_DATA.filter(o=>o.sla!=='done'&&String(o.is_id||o.inbound_id||'')===String(isId));
   }
   const tbody=document.getElementById('chk-tbody');
-  tbody.innerHTML=list.map(o=>{
-    const cat=CATALOG[o.sku]||{};
-    const title=cat.title||'';
-    const shortTitle=title.length>28?title.slice(0,28)+'…':title;
-    return `<tr onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
-      <td>${chkSlaLabel(o)}</td>
-      <td><span style="font-family:monospace;font-size:10px;color:#58a6ff">${o.sku}</span></td>
-      <td><span style="color:#c9d1d9;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
-      <td style="font-weight:700;color:#e3b341;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
-      <td style="font-size:9px;color:#8b949e;white-space:nowrap">${o.chk_ts||'—'}</td>
-      <td style="font-size:9px;color:#8b949e;white-space:nowrap">${fmtHoras(o.mins_since_chk)}</td>
-      <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?(o.movable.includes('NT')?'#58a6ff':'#3fb950'):'#484f58'}">${o.movable||'—'}</span></td>
-      <td style="font-size:9px;color:#8b949e">${o.seller||'—'}</td>
-      <td style="font-size:9px;color:#484f58;font-family:monospace">${o.is_id||'—'}</td>
-    </tr>`;
-  }).join('')||`<tr><td colspan="9" style="text-align:center;color:#484f58;padding:12px;font-size:10px">Sin items en check-in para este movable${isId?' (IS '+isId+')':''}</td></tr>`;
+
+  if(list.length){
+    tbody.innerHTML=list.map(o=>{
+      const cat=CATALOG[o.sku]||{};
+      const title=cat.title||'';
+      const shortTitle=title.length>28?title.slice(0,28)+'…':title;
+      return `<tr onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
+        <td>${chkSlaLabel(o)}</td>
+        <td><span style="font-family:monospace;font-size:10px;color:#58a6ff">${o.sku}</span></td>
+        <td><span style="color:#c9d1d9;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
+        <td style="font-weight:700;color:#e3b341;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
+        <td style="font-size:9px;color:#8b949e;white-space:nowrap">${o.chk_ts||'—'}</td>
+        <td style="font-size:9px;color:#8b949e;white-space:nowrap">${fmtHoras(o.mins_since_chk)}</td>
+        <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?(o.movable.includes('NT')?'#58a6ff':'#3fb950'):'#484f58'}">${o.movable||'—'}</span></td>
+        <td style="font-size:9px;color:#8b949e">${o.seller||'—'}</td>
+        <td style="font-size:9px;color:#484f58;font-family:monospace">${o.is_id||'—'}</td>
+      </tr>`;
+    }).join('');
+    return;
+  }
+
+  // Sin datos en CHK_DATA — mostrar tarjeta resumen desde PW_DATA
+  const pw=PW_DATA.find(g=>g.movable===mv)||{};
+  const slaCol=pw.sla==='over'?'#f85149':pw.sla==='warn'?'#e3b341':'#3fb950';
+  const slaTxt=pw.sla==='over'?`🔴 Vencido ${fmtHoras(pw.mins_restantes!=null?Math.abs(pw.mins_restantes):null)}`
+              :pw.sla==='warn'?`⚠️ ${fmtHoras(pw.mins_restantes)} restantes`
+              :pw.mins_restantes!=null?`🟢 ${fmtHoras(pw.mins_restantes)} restantes`:'—';
+  const wmsUrl=isId?`https://wms.adminml.com/reports/totes?inbound_id=${isId}&resource=PUT_AWAY`:'';
+  tbody.innerHTML=`<tr><td colspan="9" style="padding:16px">
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;max-width:480px;margin:0 auto">
+      <div style="font-size:9px;color:#484f58;margin-bottom:8px">Datos desde BT_FBM_PUTAWAY</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px">
+        <div><span style="color:#484f58">Tipo</span><br><b style="color:#c9d1d9">${pw.shipment_type||'—'}</b></div>
+        <div><span style="color:#484f58">Seller</span><br><b style="color:#c9d1d9">${pw.seller||'—'}</b></div>
+        <div><span style="color:#484f58">SKUs</span><br><b style="color:#e3b341">${pw.sku_count||'—'}</b></div>
+        <div><span style="color:#484f58">Unidades</span><br><b style="color:#e3b341">${pw.qty_checkin||'—'}</b></div>
+        <div><span style="color:#484f58">Usuario</span><br><b style="color:#8b949e">${pw.usuario||'—'}</b></div>
+        <div><span style="color:#484f58">Creado</span><br><b style="color:#8b949e">${pw.pw_created||'—'}</b></div>
+        <div><span style="color:#484f58">Espera</span><br><b style="color:#8b949e">${fmtHoras(pw.mins_since_chk)}</b></div>
+        <div><span style="color:#484f58">SLA</span><br><b style="color:${slaCol}">${slaTxt}</b></div>
+      </div>
+      ${wmsUrl?`<a href="${wmsUrl}" target="_blank" style="display:block;margin-top:12px;text-align:center;font-size:9px;padding:5px;border-radius:6px;background:#1f2937;color:#58a6ff;text-decoration:none;border:1px solid #1f6feb">🔗 Ver IS ${isId} en WMS</a>`:''}
+    </div>
+  </td></tr>`;
 }
 
 function chkToggle(f){
