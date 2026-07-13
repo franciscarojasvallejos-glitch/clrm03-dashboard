@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -6,31 +6,31 @@
 <title>Ocupación CLRM03</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#08080E;color:#E0E0EE;font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:12px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-#hdr{display:flex;align-items:center;gap:10px;padding:6px 12px;background:linear-gradient(135deg,#08080E 0%,#12120A 100%);border-bottom:1px solid #FFE600;flex-shrink:0;flex-wrap:wrap}
-h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
-.hmeta{font-size:9px;color:#45455E}
-#btnRef{background:none;border:1px solid #252540;border-radius:4px;color:#7878A0;cursor:pointer;font-size:12px;padding:2px 6px}
-#btnRef:hover{color:#FFE600}
+body{background:#EBEBEB;color:#333333;font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:12px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#hdr{display:flex;align-items:center;gap:10px;padding:6px 12px;background:#FFE600;border-bottom:2px solid #E6CF00;flex-shrink:0;flex-wrap:wrap}
+h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
+.hmeta{font-size:9px;color:#999999}
+#btnRef{background:none;border:1px solid #D9D9D9;border-radius:4px;color:#666666;cursor:pointer;font-size:12px;padding:2px 6px}
+#btnRef:hover{color:#3483FA}
 #btnRef.spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-#autoref{display:flex;align-items:center;gap:5px;font-size:10px;color:#7878A0;padding:3px 8px;background:#18182A;border:1px solid #252540;border-radius:5px;cursor:pointer;user-select:none}
-#autoref.active{border-color:#3fb95066;color:#3fb950}
+#autoref{display:flex;align-items:center;gap:5px;font-size:10px;color:#666666;padding:3px 8px;background:#F5F5F5;border:1px solid #D9D9D9;border-radius:5px;cursor:pointer;user-select:none}
+#autoref.active{border-color:#00A65066;color:#00A650}
 #ref-cd{font-weight:700;min-width:18px;text-align:right}
 #kpis{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.hsep{width:1px;height:28px;background:#252540}
+.hsep{width:1px;height:28px;background:#D9D9D9}
 .kv{font-size:17px;font-weight:700;text-align:center;min-width:36px}
-.kl{font-size:9px;color:#7878A0;text-transform:uppercase;letter-spacing:.5px;text-align:center}
-.c-blue{color:#FFE600}.c-ok{color:#3fb950}.c-warn{color:#e3b341}.c-bad{color:#f85149}
-#sbar{display:flex;gap:10px;padding:3px 12px;background:#101018;border-bottom:1px solid #252540;font-size:9px;color:#45455E;flex-shrink:0}
+.kl{font-size:9px;color:#666666;text-transform:uppercase;letter-spacing:.5px;text-align:center}
+.c-blue{color:#3483FA}.c-ok{color:#00A650}.c-warn{color:#F5A623}.c-bad{color:#F23D4F}
+#sbar{display:flex;gap:10px;padding:3px 12px;background:#FFFFFF;border-bottom:1px solid #D9D9D9;font-size:9px;color:#999999;flex-shrink:0}
 #main{display:flex;flex:1;overflow:hidden}
 #mapwrap{flex:1;overflow:auto;padding:8px 12px}
-#det{width:280px;flex-shrink:0;background:#101018;border-left:1px solid #252540;overflow-y:auto;display:flex;flex-direction:column}
-#det-hdr{padding:8px 10px;font-size:11px;font-weight:700;color:#FFE600;border-bottom:1px solid #252540;position:sticky;top:0;background:#101018;z-index:1}
+#det{width:280px;flex-shrink:0;background:#FFFFFF;border-left:1px solid #D9D9D9;overflow-y:auto;display:flex;flex-direction:column}
+#det-hdr{padding:8px 10px;font-size:11px;font-weight:700;color:#3483FA;border-bottom:1px solid #D9D9D9;position:sticky;top:0;background:#FFFFFF;z-index:1}
 #det-body{padding:8px;flex:1}
 .zone-section{margin-bottom:6px}
-.zone-hdr{display:flex;align-items:center;gap:6px;padding:3px 6px;background:#18182A;border:1px solid #252540;border-radius:4px;cursor:pointer;user-select:none;font-size:10px;font-weight:700}
-.zone-hdr:hover{background:#252540}
+.zone-hdr{display:flex;align-items:center;gap:6px;padding:3px 6px;background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;cursor:pointer;user-select:none;font-size:10px;font-weight:700}
+.zone-hdr:hover{background:#D9D9D9}
 .zone-body{overflow:hidden}
 .zone-body-inner{padding:4px 0}
 .zone-section.collapsed .zone-body{display:none}
@@ -38,184 +38,188 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 .bay-axis-row{display:flex;align-items:flex-end;height:14px;margin-bottom:1px}
 .axis-lbl-spacer{width:62px;flex-shrink:0}
 .axis-inner{display:grid;position:relative;flex:1}
-.axis-tick{font-size:7px;color:#45455E;text-align:center}
+.axis-tick{font-size:7px;color:#999999;text-align:center}
 .aisle-row{display:flex;align-items:center;margin-bottom:1px}
-.aisle-lbl{width:62px;flex-shrink:0;font-size:8px;color:#45455E;text-align:right;padding-right:7px;font-family:monospace;position:sticky;left:0;background:#08080E;z-index:1}
+.aisle-lbl{width:62px;flex-shrink:0;font-size:8px;color:#999999;text-align:right;padding-right:7px;font-family:monospace;position:sticky;left:0;background:#EBEBEB;z-index:1}
 .bay-grid{display:grid;gap:1px}
 .bc{border-radius:1px;cursor:pointer;transition:filter .07s;aspect-ratio:1/1;min-width:10px;min-height:10px}
 .bc:hover{filter:brightness(1.6);outline:1px solid rgba(255,255,255,.35);position:relative;z-index:2}
 .bc.sel{outline:2px solid #fff;filter:brightness(1.4);position:relative;z-index:3}
-.bc.empty{background:#111820 !important;cursor:default}
+.bc.empty{background:#E8E8E8 !important;cursor:default}
 .bc.empty:hover{filter:none;outline:none}
-.bc.empty.bl-empty{background:#1a4f96 !important;cursor:pointer}
+.bc.empty.bl-empty{background:#3483FA !important;cursor:pointer}
 .bc.empty.bl-empty:hover{filter:brightness(1.4)!important;outline:1px solid rgba(88,166,255,.4)!important;position:relative;z-index:2}
 .bc.wms-gap{background:transparent!important;cursor:default;pointer-events:none}
-.rk-bc{display:flex;flex-direction:row;gap:1px;padding:0;background:#08080E;border-radius:1px;cursor:pointer;overflow:hidden}
+.rk-bc{display:flex;flex-direction:row;gap:1px;padding:0;background:#EBEBEB;border-radius:1px;cursor:pointer;overflow:hidden}
 .rk-bc:hover .bc-pos{filter:brightness(1.6)}
 .rk-bc.sel .bc-pos{filter:brightness(1.4)}
 .bc-pos{flex:1;min-width:3px;transition:filter .07s}
 .bc-pos.ocp:hover{filter:brightness(1.9)!important;outline:1px solid rgba(255,255,255,.5);position:relative;z-index:2}
-.bc-pos.emp{background:#111820}
+.bc-pos.emp{background:#E8E8E8}
 .bc-pos.gap{background:transparent}
 .bl-section{margin-bottom:6px}
 .bl-tabs{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
-.bl-tab-btn{background:#18182A;border:1px solid #252540;border-radius:4px;color:#7878A0;cursor:pointer;font-size:10px;font-weight:600;padding:3px 10px;transition:all .15s}
-.bl-tab-btn:hover{background:#252540}
-.bl-tab-active{background:#252540;border-color:currentColor}
+.bl-tab-btn{background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;color:#666666;cursor:pointer;font-size:10px;font-weight:600;padding:3px 10px;transition:all .15s}
+.bl-tab-btn:hover{background:#D9D9D9}
+.bl-tab-active{background:#D9D9D9;border-color:currentColor}
 .bl-tab-content{padding:2px 0}
-#tip{position:fixed;background:#101018;border:1px solid #252540;border-radius:6px;padding:8px 10px;font-size:10px;pointer-events:none;z-index:100;display:none;min-width:160px;box-shadow:0 4px 16px #0008}
+#tip{position:fixed;background:#FFFFFF;border:1px solid #D9D9D9;border-radius:6px;padding:8px 10px;font-size:10px;pointer-events:none;z-index:100;display:none;min-width:160px;box-shadow:0 4px 16px #0008}
 #tip.vis{display:block}
 .tr{display:flex;justify-content:space-between;gap:12px;margin-bottom:2px}
-.tl{color:#7878A0}.tv{color:#E0E0EE;font-weight:600;text-align:right}
-.det-bay{font-family:monospace;font-size:9px;color:#FFE600;margin-bottom:4px}
-.det-stat{font-size:10px;color:#7878A0;margin-bottom:8px;line-height:1.5}
-.det-stat b{color:#E0E0EE}
-.slot-card{background:#08080E;border:1px solid #18182A;border-radius:5px;padding:6px 8px;margin-bottom:4px}
-.slot-addr{font-size:9px;color:#FFE60088;font-family:monospace;margin-bottom:3px}
-.occ-bar{height:4px;background:#252540;border-radius:2px;overflow:hidden;margin-bottom:3px}
+.tl{color:#666666}.tv{color:#333333;font-weight:600;text-align:right}
+.det-bay{font-family:monospace;font-size:9px;color:#3483FA;margin-bottom:4px}
+.det-stat{font-size:10px;color:#666666;margin-bottom:8px;line-height:1.5}
+.det-stat b{color:#333333}
+.slot-card{background:#EBEBEB;border:1px solid #F5F5F5;border-radius:5px;padding:6px 8px;margin-bottom:4px}
+.slot-addr{font-size:9px;color:#3483FA88;font-family:monospace;margin-bottom:3px}
+.occ-bar{height:4px;background:#D9D9D9;border-radius:2px;overflow:hidden;margin-bottom:3px}
 .occ-fill{height:100%;border-radius:2px}
-.sku-chip{font-size:8px;padding:1px 5px;border-radius:3px;background:#B8A80022;color:#FFE600;border:1px solid #B8A80044;font-family:monospace}
-.prod-resp{font-size:8px;color:#7878A0;display:flex;align-items:center;gap:3px;margin-top:2px;border-top:1px solid #18182A;padding-top:2px}
-.prod-resp .ruser{color:#e3b341;font-weight:600;font-family:monospace}
-.prod-resp .rdate{color:#45455E}
-.prod-title{font-size:9px;font-weight:600;color:#E0E0EE;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.prod-meta{font-size:8px;color:#7878A0}
+.sku-chip{font-size:8px;padding:1px 5px;border-radius:3px;background:#2968C822;color:#3483FA;border:1px solid #2968C844;font-family:monospace}
+.prod-resp{font-size:8px;color:#666666;display:flex;align-items:center;gap:3px;margin-top:2px;border-top:1px solid #F5F5F5;padding-top:2px}
+.prod-resp .ruser{color:#F5A623;font-weight:600;font-family:monospace}
+.prod-resp .rdate{color:#999999}
+.prod-title{font-size:9px;font-weight:600;color:#333333;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prod-meta{font-size:8px;color:#666666}
 .prod-row{display:flex;gap:6px;align-items:flex-start}
-.prod-img{width:44px;height:44px;object-fit:contain;border-radius:3px;background:#08080E;flex-shrink:0;border:1px solid #252540}
+.prod-img{width:44px;height:44px;object-fit:contain;border-radius:3px;background:#EBEBEB;flex-shrink:0;border:1px solid #D9D9D9}
 .prod-info{flex:1;min-width:0}
 /* ── Dashboard tabs ──────────────────────────────────────────────────────── */
-#dash-tabs{background:#08080E;border-bottom:1px solid #252540;display:flex;flex-shrink:0}
-.dash-tab{background:none;border:none;border-bottom:2px solid transparent;color:#7878A0;cursor:pointer;font-size:11px;font-weight:700;padding:7px 18px;letter-spacing:.3px;text-transform:uppercase;transition:all .15s}
-.dash-tab:hover{color:#E0E0EE;background:#141420}
-.dash-tab.active{color:#FFE600;border-bottom-color:#FFE600}
-.dash-tab.tab-sug.active{color:#e3b341;border-bottom-color:#e3b341}
+#dash-tabs{background:#FFFFFF;border-bottom:1px solid #D9D9D9;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-shrink:0}
+.dash-tab{background:none;border:none;border-bottom:2px solid transparent;color:#666666;cursor:pointer;font-size:11px;font-weight:700;padding:7px 18px;letter-spacing:.3px;text-transform:uppercase;transition:all .15s}
+.dash-tab:hover{color:#333333;background:#F5F5F5}
+.dash-tab.active{color:#3483FA;border-bottom-color:#3483FA}
+.dash-tab.tab-sug.active{color:#F5A623;border-bottom-color:#F5A623}
 #mapa-view{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
-#sug-view{flex:1;overflow:hidden;display:none;flex-direction:column;background:#08080E;min-height:0}
+#sug-view{flex:1;overflow:hidden;display:none;flex-direction:column;background:#EBEBEB;min-height:0}
 /* ── Sugerencias panel ─────────────────────────────────────────────────── */
-#sug-search-bar{background:#101018;border-bottom:1px solid #252540;padding:8px 16px;display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
-#sug-input{flex:1;min-width:200px;max-width:380px;background:#18182A;border:1px solid #252540;color:#E0E0EE;font-size:11px;padding:5px 10px;border-radius:4px;outline:none;font-family:monospace}
-#sug-input:focus{border-color:#e3b341}
-#sug-input::placeholder{color:#45455E;font-family:system-ui}
-#btn-sug-buscar{background:#2d2a1a;border:1px solid #e3b341;color:#e3b341;font-size:10px;font-weight:700;padding:5px 14px;border-radius:4px;cursor:pointer}
-#btn-sug-buscar:hover{background:#3d3a2a}
+#sug-search-bar{background:#FFFFFF;border-bottom:1px solid #D9D9D9;padding:8px 16px;display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+#sug-input{flex:1;min-width:200px;max-width:380px;background:#F5F5F5;border:1px solid #D9D9D9;color:#333333;font-size:11px;padding:5px 10px;border-radius:4px;outline:none;font-family:monospace}
+#sug-input:focus{border-color:#F5A623}
+#sug-input::placeholder{color:#999999;font-family:system-ui}
+#btn-sug-buscar{background:#3483FA;border:none;color:#FFFFFF;font-size:10px;font-weight:700;padding:5px 14px;border-radius:4px;cursor:pointer}
+#btn-sug-buscar:hover{background:#2968C8}
 #sug-body{flex:1;overflow:hidden;display:flex;gap:0}
-#sug-sku-list{width:300px;flex-shrink:0;border-right:1px solid #252540;overflow-y:auto;display:flex;flex-direction:column}
-#sug-sku-list::-webkit-scrollbar{width:4px}#sug-sku-list::-webkit-scrollbar-thumb{background:#252540}
+#sug-sku-list{width:300px;flex-shrink:0;border-right:1px solid #D9D9D9;overflow-y:auto;display:flex;flex-direction:column}
+#sug-sku-list::-webkit-scrollbar{width:4px}#sug-sku-list::-webkit-scrollbar-thumb{background:#D9D9D9}
 #sug-results{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
-#sug-results::-webkit-scrollbar{width:4px}#sug-results::-webkit-scrollbar-thumb{background:#252540}
-.sug-sku-item{padding:7px 12px;border-bottom:1px solid #101018;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s}
-.sug-sku-item:hover{background:#101018}
-.sug-sku-item.sel{background:#18182A;border-left:2px solid #e3b341}
-.sug-sku-inv{font-family:monospace;font-size:10px;color:#FFE600;white-space:nowrap}
-.sug-sku-name{font-size:10px;color:#E0E0EE;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.sug-sku-locs{font-size:9px;color:#45455E;white-space:nowrap}
-.sug-result-card{background:#101018;border:1px solid #252540;border-radius:6px;overflow:hidden;transition:border-color .1s}
-.sug-result-card:hover{border-color:#45455E}
+#sug-results::-webkit-scrollbar{width:4px}#sug-results::-webkit-scrollbar-thumb{background:#D9D9D9}
+.sug-sku-item{padding:7px 12px;border-bottom:1px solid #FFFFFF;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s}
+.sug-sku-item:hover{background:#FFFFFF}
+.sug-sku-item.sel{background:#F5F5F5;border-left:2px solid #F5A623}
+.sug-sku-inv{font-family:monospace;font-size:10px;color:#3483FA;white-space:nowrap}
+.sug-sku-name{font-size:10px;color:#333333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.sug-sku-locs{font-size:9px;color:#999999;white-space:nowrap}
+.sug-result-card{background:#FFFFFF;border:1px solid #D9D9D9;border-radius:6px;overflow:hidden;transition:border-color .1s}
+.sug-result-card:hover{border-color:#999999}
 .sug-result-hdr{padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.sug-result-addr{font-family:monospace;font-size:12px;font-weight:700;color:#E0E0EE}
-.sug-result-zona{font-size:9px;color:#45455E;background:#18182A;padding:1px 6px;border-radius:3px}
+.sug-result-addr{font-family:monospace;font-size:12px;font-weight:700;color:#333333}
+.sug-result-zona{font-size:9px;color:#999999;background:#F5F5F5;padding:1px 6px;border-radius:3px}
 .sug-afinidad{font-size:12px;margin-left:auto}
 .sug-reasons{padding:4px 12px 6px 12px;display:flex;flex-wrap:wrap;gap:4px}
 .sug-tag{font-size:9px;padding:2px 8px;border-radius:10px;font-weight:600}
-.sug-tag-exact{background:#1a3d1a;color:#3fb950}
-.sug-tag-dom{background:#1a2d3a;color:#FFE600}
-.sug-tag-brand{background:#2d2a1a;color:#e3b341}
-.sug-tag-space{background:#141420;color:#7878A0}
-.sug-tag-warn{background:#3d1a1a;color:#f85149}
-.sug-bars{padding:4px 12px 8px 12px;display:flex;gap:16px;align-items:flex-start;font-size:9px;color:#7878A0;flex-wrap:wrap}
+.sug-tag-exact{background:#E6F7EE;color:#00A650}
+.sug-tag-dom{background:#EBF2FF;color:#3483FA}
+.sug-tag-brand{background:#FEF3E2;color:#F5A623}
+.sug-tag-space{background:#F5F5F5;color:#666666}
+.sug-tag-warn{background:#FDECEA;color:#F23D4F}
+.sug-bars{padding:4px 12px 8px 12px;display:flex;gap:16px;align-items:flex-start;font-size:9px;color:#666666;flex-wrap:wrap}
 .sug-bar-wrap{display:flex;flex-direction:column;gap:2px;min-width:80px}
 .sug-bar-lbl{display:flex;justify-content:space-between;gap:6px}
-.sug-bar{height:4px;background:#18182A;border-radius:2px;overflow:hidden;margin-top:1px}
+.sug-bar{height:4px;background:#F5F5F5;border-radius:2px;overflow:hidden;margin-top:1px}
 .sug-bar-fill{height:100%;border-radius:2px}
-#sug-empty{text-align:center;color:#45455E;padding:40px 20px;font-size:12px;line-height:1.8}
-#sug-sku-hdr{padding:6px 12px;font-size:9px;color:#45455E;border-bottom:1px solid #18182A;background:#08080E;position:sticky;top:0;z-index:1;display:flex;justify-content:space-between}
-.sug-score-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#18182A;color:#e3b341;margin-left:auto;white-space:nowrap}
+#sug-empty{text-align:center;color:#999999;padding:40px 20px;font-size:12px;line-height:1.8}
+#sug-sku-hdr{padding:6px 12px;font-size:9px;color:#999999;border-bottom:1px solid #F5F5F5;background:#EBEBEB;position:sticky;top:0;z-index:1;display:flex;justify-content:space-between}
+.sug-score-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#F5F5F5;color:#F5A623;margin-left:auto;white-space:nowrap}
 /* ── Inventario SKU tab ──────────────────────────────────────────────────── */
-#inv-view{flex:1;overflow:hidden;display:none;flex-direction:column;background:#08080E;min-height:0}
-#inv-toolbar{background:#101018;border-bottom:1px solid #252540;padding:8px 16px;display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
-#inv-search{flex:1;min-width:180px;max-width:340px;background:#18182A;border:1px solid #252540;color:#E0E0EE;font-size:11px;padding:5px 10px;border-radius:4px;outline:none;font-family:monospace}
-#inv-search:focus{border-color:#FFE600}
-#inv-search::placeholder{color:#45455E;font-family:system-ui}
-.inv-filter-btn{background:none;border:1px solid #252540;color:#7878A0;font-size:10px;font-weight:600;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
-.inv-filter-btn:hover{background:#18182A}
-.inv-filter-btn.on{background:#18182A;color:#FFE600;border-color:#FFE600}
-.inv-filter-btn.on.rk{color:#3fb950;border-color:#3fb950;background:#1a3a26}
-.inv-filter-btn.on.bl{color:#FFE600;border-color:#FFE600;background:#1a2d3a}
-#inv-count{font-size:9px;color:#45455E;margin-left:auto}
+#inv-view{flex:1;overflow:hidden;display:none;flex-direction:column;background:#EBEBEB;min-height:0}
+#inv-toolbar{background:#FFFFFF;border-bottom:1px solid #D9D9D9;padding:8px 16px;display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+#inv-search{flex:1;min-width:180px;max-width:340px;background:#F5F5F5;border:1px solid #D9D9D9;color:#333333;font-size:11px;padding:5px 10px;border-radius:4px;outline:none;font-family:monospace}
+#inv-search:focus{border-color:#3483FA}
+#inv-search::placeholder{color:#999999;font-family:system-ui}
+.inv-filter-btn{background:none;border:1px solid #D9D9D9;color:#666666;font-size:10px;font-weight:600;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+.inv-filter-btn:hover{background:#F5F5F5}
+.inv-filter-btn.on{background:#F5F5F5;color:#3483FA;border-color:#3483FA}
+.inv-filter-btn.on.rk{color:#00A650;border-color:#00A650;background:#E6F7EE}
+.inv-filter-btn.on.bl{color:#3483FA;border-color:#3483FA;background:#EBF2FF}
+#inv-count{font-size:9px;color:#999999;margin-left:auto}
 #inv-body{flex:1;overflow:hidden;display:flex;gap:0;min-height:0}
 #inv-table-wrap{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
-#inv-table-wrap::-webkit-scrollbar{width:5px}#inv-table-wrap::-webkit-scrollbar-thumb{background:#252540}
-#inv-detail{width:310px;flex-shrink:0;border-left:1px solid #252540;overflow-y:auto;display:flex;flex-direction:column;background:#101018}
-#inv-detail::-webkit-scrollbar{width:4px}#inv-detail::-webkit-scrollbar-thumb{background:#252540}
+#inv-table-wrap::-webkit-scrollbar{width:5px}#inv-table-wrap::-webkit-scrollbar-thumb{background:#D9D9D9}
+#inv-detail{width:310px;flex-shrink:0;border-left:1px solid #D9D9D9;overflow-y:auto;display:flex;flex-direction:column;background:#FFFFFF}
+#inv-detail::-webkit-scrollbar{width:4px}#inv-detail::-webkit-scrollbar-thumb{background:#D9D9D9}
 #inv-tbl{width:100%;border-collapse:collapse;font-size:10px}
-#inv-tbl thead{position:sticky;top:0;z-index:2;background:#101018}
-#inv-tbl th{padding:5px 10px;text-align:left;font-size:9px;font-weight:700;color:#45455E;border-bottom:1px solid #252540;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none}
-#inv-tbl th:hover{color:#7878A0}
+#inv-tbl thead{position:sticky;top:0;z-index:2;background:#F5F5F5}
+#inv-tbl th{padding:5px 10px;text-align:left;font-size:9px;font-weight:700;background:#F5F5F5;color:#666666;border-bottom:2px solid #D9D9D9;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none}
+#inv-tbl th:hover{color:#333333}
 #inv-tbl th.sort-asc::after{content:' ▲';font-size:8px}
 #inv-tbl th.sort-desc::after{content:' ▼';font-size:8px}
-#inv-tbl td{padding:5px 10px;border-bottom:1px solid #101018;vertical-align:middle}
-#inv-tbl tr:hover td{background:#101018}
-#inv-tbl tr.inv-sel td{background:#18182A;border-left:2px solid #FFE600}
-.inv-sku{font-family:monospace;color:#FFE600;font-size:10px;white-space:nowrap}
-.inv-title{color:#E0E0EE;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.inv-brand{color:#7878A0;font-size:9px;white-space:nowrap}
+#inv-tbl td{padding:5px 10px;border-bottom:1px solid #F5F5F5;vertical-align:middle}
+#inv-tbl tr:hover td{background:#F5F5F5}
+#inv-tbl tr.inv-sel td{background:#F5F5F5;border-left:2px solid #3483FA}
+.inv-sku{font-family:monospace;color:#3483FA;font-size:10px;white-space:nowrap}
+.inv-title{color:#333333;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-brand{color:#666666;font-size:9px;white-space:nowrap}
 .inv-area-tag{font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700;display:inline-block}
-.inv-area-rk{background:#1a3a26;color:#3fb950}
-.inv-area-bl{background:#1a2d3a;color:#FFE600}
-.inv-qty{font-weight:700;color:#e3b341}
-.inv-locs{color:#7878A0;font-size:9px;text-align:center}
-#inv-det-hdr{padding:10px 12px;font-size:11px;font-weight:700;color:#FFE600;border-bottom:1px solid #252540;position:sticky;top:0;background:#101018;z-index:1}
+.inv-area-rk{background:#E6F7EE;color:#00A650}
+.inv-area-bl{background:#EBF2FF;color:#3483FA}
+.inv-qty{font-weight:700;color:#F5A623}
+.inv-locs{color:#666666;font-size:9px;text-align:center}
+#inv-det-hdr{padding:10px 12px;font-size:11px;font-weight:700;color:#3483FA;border-bottom:1px solid #D9D9D9;position:sticky;top:0;background:#FFFFFF;z-index:1}
 #inv-det-body{padding:10px 12px;flex:1}
-.inv-loc-card{background:#08080E;border:1px solid #18182A;border-radius:5px;padding:6px 10px;margin-bottom:5px}
-.inv-loc-addr{font-family:monospace;font-size:10px;color:#FFE600;margin-bottom:3px;font-weight:700}
-.inv-loc-meta{font-size:9px;color:#7878A0;display:flex;gap:8px;flex-wrap:wrap}
+.inv-loc-card{background:#EBEBEB;border:1px solid #F5F5F5;border-radius:5px;padding:6px 10px;margin-bottom:5px}
+.inv-loc-addr{font-family:monospace;font-size:10px;color:#3483FA;margin-bottom:3px;font-weight:700}
+.inv-loc-meta{font-size:9px;color:#666666;display:flex;gap:8px;flex-wrap:wrap}
 /* ── Check-in & Putaway tab ─────────────────────────────────────────────── */
-#chk-view{flex:1;overflow:hidden;display:none;flex-direction:column;background:#08080E;min-height:0}
-#chk-toolbar{background:#101018;border-bottom:1px solid #252540;padding:7px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap}
-#chk-search{background:#18182A;border:1px solid #252540;color:#E0E0EE;font-size:11px;padding:4px 10px;border-radius:4px;outline:none;font-family:monospace;width:220px}
-#chk-search:focus{border-color:#FFE600}
-.chk-filter-btn{background:none;border:1px solid #252540;color:#45455E;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;cursor:pointer;opacity:.5;transition:all .15s}
+#chk-view{flex:1;overflow:hidden;display:none;flex-direction:column;background:#EBEBEB;min-height:0}
+#chk-toolbar{background:#FFFFFF;border-bottom:1px solid #D9D9D9;padding:7px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+#chk-search{background:#F5F5F5;border:1px solid #D9D9D9;color:#333333;font-size:11px;padding:4px 10px;border-radius:4px;outline:none;font-family:monospace;width:220px}
+#chk-search:focus{border-color:#3483FA}
+.chk-filter-btn{background:none;border:1px solid #D9D9D9;color:#999999;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;cursor:pointer;opacity:.5;transition:all .15s}
 .chk-filter-btn.on{opacity:1}
-.chk-filter-btn.on.f-pend{color:#e3b341;border-color:#e3b341;background:#e3b34118}
-.chk-filter-btn.on.f-over{color:#f85149;border-color:#f85149;background:#f8514918}
-.chk-filter-btn.on.f-done{color:#3fb950;border-color:#3fb950;background:#3fb95018}
-.chk-filter-btn.on.f-nt{color:#FFE600;border-color:#FFE600;background:#FFE60018}
+.chk-filter-btn.on.f-pend{color:#F5A623;border-color:#F5A623;background:#F5A62318}
+.chk-filter-btn.on.f-over{color:#F23D4F;border-color:#F23D4F;background:#F23D4F18}
+.chk-filter-btn.on.f-done{color:#00A650;border-color:#00A650;background:#00A65018}
+.chk-filter-btn.on.f-nt{color:#3483FA;border-color:#3483FA;background:#3483FA18}
 #chk-kpis{margin-left:auto;display:flex;gap:12px;align-items:center}
 .chk-kpi{text-align:center}
 .chk-kv{font-size:15px;font-weight:700}
-.chk-kl{font-size:8px;color:#45455E;text-transform:uppercase;letter-spacing:.4px}
+.chk-kl{font-size:8px;color:#999999;text-transform:uppercase;letter-spacing:.4px}
 #chk-body{flex:1;overflow:hidden;display:flex;min-height:0}
 #chk-list{flex:1;overflow-y:auto;display:flex;flex-direction:column}
-#chk-list::-webkit-scrollbar{width:5px}#chk-list::-webkit-scrollbar-thumb{background:#252540}
-#chk-detail{width:320px;flex-shrink:0;border-left:1px solid #252540;overflow-y:auto;background:#101018;display:flex;flex-direction:column}
-#chk-det-hdr{padding:10px 12px;font-size:11px;font-weight:700;border-bottom:1px solid #252540;position:sticky;top:0;background:#101018;z-index:1}
+#chk-list::-webkit-scrollbar{width:5px}#chk-list::-webkit-scrollbar-thumb{background:#D9D9D9}
+#chk-detail{width:320px;flex-shrink:0;border-left:1px solid #D9D9D9;overflow-y:auto;background:#FFFFFF;display:flex;flex-direction:column}
+#chk-det-hdr{padding:10px 12px;font-size:11px;font-weight:700;border-bottom:1px solid #D9D9D9;position:sticky;top:0;background:#FFFFFF;z-index:1}
 #chk-det-body{padding:10px 12px;flex:1}
 #chk-tbl{width:100%;border-collapse:collapse;font-size:10px}
-#chk-tbl thead{position:sticky;top:0;z-index:2;background:#101018}
-#chk-tbl th{padding:5px 10px;text-align:left;font-size:9px;font-weight:700;color:#45455E;border-bottom:1px solid #252540;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
-#chk-tbl td{padding:5px 10px;border-bottom:1px solid #101018;vertical-align:middle}
-#chk-tbl tr:hover td{background:#101018}
-#chk-tbl tr.chk-sel td{background:#18182A;border-left:2px solid #FFE600}
+#chk-tbl thead{position:sticky;top:0;z-index:2;background:#F5F5F5}
+#chk-tbl th{padding:5px 10px;text-align:left;font-size:9px;font-weight:700;background:#F5F5F5;color:#666666;border-bottom:2px solid #D9D9D9;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+#chk-tbl td{padding:5px 10px;border-bottom:1px solid #F5F5F5;vertical-align:middle}
+#chk-tbl tr:hover td{background:#F5F5F5}
+#chk-tbl tr.chk-sel td{background:#F5F5F5;border-left:2px solid #3483FA}
 .sla-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap}
-.sla-ok       {background:#1a3a26;color:#3fb950}
-.sla-warn     {background:#2d2a1a;color:#e3b341}
-.sla-over     {background:#3d1a1a;color:#f85149;animation:chk-pulse 2s ease-in-out infinite}
-.sla-done     {background:#141420;color:#45455E}
-.sla-unknown  {background:#141420;color:#45455E}
-.sla-pw-active{background:#1C1900;color:#FFE600;animation:chk-pulse 2s ease-in-out infinite}
+.sla-ok       {background:#E6F7EE;color:#00A650}
+.sla-warn     {background:#FEF3E2;color:#F5A623}
+.sla-over     {background:#FDECEA;color:#F23D4F;animation:chk-pulse 2s ease-in-out infinite}
+.sla-done     {background:#F5F5F5;color:#999999}
+.sla-unknown  {background:#F5F5F5;color:#999999}
+.sla-pw-active{background:#EBF2FF;color:#3483FA;animation:chk-pulse 2s ease-in-out infinite}
 @keyframes chk-pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.chk-sug-card{background:#08080E;border:1px solid #18182A;border-radius:5px;padding:6px 10px;margin-bottom:5px}
-.chk-sug-addr{font-family:monospace;font-size:10px;font-weight:700;color:#3fb950}
-.chk-sug-meta{font-size:9px;color:#7878A0;display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.chk-sug-card{background:#EBEBEB;border:1px solid #F5F5F5;border-radius:5px;padding:6px 10px;margin-bottom:5px}
+.chk-sug-addr{font-family:monospace;font-size:10px;font-weight:700;color:#00A650}
+.chk-sug-meta{font-size:9px;color:#666666;display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
 #slot-modal.vis{display:flex!important}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#EBEBEB}
+::-webkit-scrollbar-thumb{background:#CCCCCC;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#BBBBBB}
 </style>
 </head>
 <body>
 <div id="hdr">
-  <h1 style="background:linear-gradient(90deg,#FFE600,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">⬡ Ocupación Ubicaciones · CLRM03</h1>
-  <div class="hmeta">BT_FBM_STOCK_3_ADDRESS · actualizado <b id="hupd">—</b> &nbsp;<span id="sse-dot" title="Conexión en vivo" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#45455E;vertical-align:middle;margin-right:3px"></span><span id="sse-lbl" style="font-size:9px;color:#45455E">sin conexión</span></div>
+  <h1 style="color:#333333;font-weight:700">⬡ Ocupación Ubicaciones · CLRM03</h1>
+  <div class="hmeta">BT_FBM_STOCK_3_ADDRESS · actualizado <b id="hupd">—</b> &nbsp;<span id="sse-dot" title="Conexión en vivo" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#999999;vertical-align:middle;margin-right:3px"></span><span id="sse-lbl" style="font-size:9px;color:#999999">sin conexión</span></div>
   <button id="btnRef" onclick="loadData()" title="Recargar">↺</button>
-  <button id="btn-view-mode" onclick="toggleViewMode()" style="background:none;border:1px solid #252540;border-radius:4px;color:#7878A0;cursor:pointer;font-size:10px;padding:2px 8px">📐 Ver por Volumen</button>
+  <button id="btn-view-mode" onclick="toggleViewMode()" style="background:none;border:1px solid #D9D9D9;border-radius:4px;color:#666666;cursor:pointer;font-size:10px;padding:2px 8px">📐 Ver por Volumen</button>
   <div id="autoref" class="active" onclick="toggleAuto()" title="Auto-refresh cada 60s">
     <span style="font-size:9px;opacity:.7">⏱</span> Auto <span id="ref-cd">60</span>s
   </div>
@@ -231,7 +235,7 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     <div title="Ubicaciones con 3 SKUs"><div class="kv" id="k-locs-3" style="font-size:13px;color:#d07030">—</div><div class="kl">3 SKUs</div></div>
     <div title="Ubicaciones con 4 o más SKUs"><div class="kv c-bad" id="k-locs-4p" style="font-size:13px">—</div><div class="kl">4+ SKUs</div></div>
     <div class="hsep"></div>
-    <div><div class="kv" id="k-bl-over" style="color:#f85149">—</div><div class="kl">BL &gt;1 SKU</div></div>
+    <div><div class="kv" id="k-bl-over" style="color:#F23D4F">—</div><div class="kl">BL &gt;1 SKU</div></div>
     <div class="hsep"></div>
     <div title="Almacenamiento BL disponible en WMS y sin stock"><div class="kv" id="k-disp-alm" style="color:#4da6ff">—</div><div class="kl">Almac. Libre</div></div>
     <div title="Picking BL disponible en WMS y sin stock"><div class="kv" id="k-disp-pick" style="color:#4da6ff">—</div><div class="kl">Pick. Libre</div></div>
@@ -251,16 +255,16 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     <span id="s-msg">Hover sobre el mapa</span>
     <div style="margin-left:auto;position:relative;display:flex;align-items:center;gap:6px">
       <input id="loc-search" type="text" placeholder="Buscar ubicación…  ej: RK-005-001" autocomplete="off"
-        style="background:#18182A;border:1px solid #252540;color:#E0E0EE;font-size:10px;font-family:monospace;padding:3px 8px;border-radius:4px;outline:none;width:220px"
+        style="background:#F5F5F5;border:1px solid #D9D9D9;color:#333333;font-size:10px;font-family:monospace;padding:3px 8px;border-radius:4px;outline:none;width:220px"
         oninput="locSearchInput(this.value)" onkeydown="locSearchKey(event)">
-      <div id="loc-results" style="display:none;position:absolute;top:100%;right:0;z-index:500;background:#101018;border:1px solid #252540;border-radius:4px;min-width:300px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.6);margin-top:2px"></div>
+      <div id="loc-results" style="display:none;position:absolute;top:100%;right:0;z-index:500;background:#FFFFFF;border:1px solid #D9D9D9;border-radius:4px;min-width:300px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.6);margin-top:2px"></div>
     </div>
   </div>
   <div id="main">
     <div id="mapwrap"></div>
     <div id="det">
       <div id="det-hdr">Detalle de Ubicación</div>
-      <div id="det-body"><div style="color:#7878A0;font-size:10px;text-align:center;margin-top:20px">Click en una celda</div></div>
+      <div id="det-body"><div style="color:#666666;font-size:10px;text-align:center;margin-top:20px">Click en una celda</div></div>
     </div>
   </div>
 </div>
@@ -268,32 +272,32 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
   <div id="sug-search-bar">
     <input id="sug-input" type="text" placeholder="Buscar SKU, producto o categoría…" oninput="filtrarSKUList(this.value)" onkeydown="if(event.key==='Enter')buscarSugerencia()">
     <button id="btn-sug-buscar" onclick="buscarSugerencia()">🔍 Buscar ubicaciones</button>
-    <span style="font-size:9px;color:#45455E" id="sug-status"></span>
+    <span style="font-size:9px;color:#999999" id="sug-status"></span>
   </div>
   <div id="sug-body">
     <div id="sug-sku-list">
       <div id="sug-sku-hdr"><span>SKU · SLA Pendiente</span><span>Qty</span></div>
-      <div id="sug-sku-items"><div style="padding:16px;color:#45455E;font-size:10px">Cargando inventario…</div></div>
+      <div id="sug-sku-items"><div style="padding:16px;color:#999999;font-size:10px">Cargando inventario…</div></div>
     </div>
     <div id="sug-results">
       <div id="sug-cola-wrap">
-        <div style="font-size:10px;font-weight:700;color:#f85149;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+        <div style="font-size:10px;font-weight:700;color:#F23D4F;margin-bottom:6px;display:flex;align-items:center;gap:6px">
           🚨 Cola de Putaway Pendiente
-          <span style="font-size:8px;color:#45455E;font-weight:400">ordenada por urgencia SLA</span>
+          <span style="font-size:8px;color:#999999;font-weight:400">ordenada por urgencia SLA</span>
         </div>
-        <div id="sug-cola"><div style="color:#45455E;font-size:10px">Cargando…</div></div>
+        <div id="sug-cola"><div style="color:#999999;font-size:10px">Cargando…</div></div>
       </div>
       <div id="sug-sinmov-wrap" style="margin-top:14px">
-        <div style="font-size:10px;font-weight:700;color:#e3b341;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+        <div style="font-size:10px;font-weight:700;color:#F5A623;margin-bottom:6px;display:flex;align-items:center;gap:6px">
           ⏱ Stock sin movimiento
-          <span style="font-size:8px;color:#45455E;font-weight:400">SKUs sin picking ≥30 días · top 30</span>
-          <span id="sinmov-kpi" style="margin-left:auto;font-size:9px;color:#e3b341"></span>
+          <span style="font-size:8px;color:#999999;font-weight:400">SKUs sin picking ≥30 días · top 30</span>
+          <span id="sinmov-kpi" style="margin-left:auto;font-size:9px;color:#F5A623"></span>
         </div>
-        <div id="sug-sinmov"><div style="color:#45455E;font-size:10px">Sin datos (corre fetch_sin_movimiento.py)</div></div>
+        <div id="sug-sinmov"><div style="color:#999999;font-size:10px">Sin datos (corre fetch_sin_movimiento.py)</div></div>
       </div>
       <div id="sug-empty" style="display:none">
         🔍 Busca un SKU o producto para ver<br>sugerencias de dónde guardarlo<br>
-        <span style="font-size:10px;color:#252540">basado en volumetría y afinidad de producto</span>
+        <span style="font-size:10px;color:#D9D9D9">basado en volumetría y afinidad de producto</span>
       </div>
     </div>
   </div>
@@ -304,7 +308,7 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     <button class="inv-filter-btn on rk" id="inv-f-rk" onclick="invToggleArea('RK')">RK</button>
     <button class="inv-filter-btn on bl" id="inv-f-bl" onclick="invToggleArea('BL')">BL</button>
     <button class="inv-filter-btn" id="inv-f-multi" onclick="invToggleMulti()">Multi-SKU</button>
-    <span id="inv-count" style="font-size:9px;color:#45455E"></span>
+    <span id="inv-count" style="font-size:9px;color:#999999"></span>
   </div>
   <div id="inv-body">
     <div id="inv-table-wrap">
@@ -323,25 +327,25 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     </div>
     <div id="inv-detail">
       <div id="inv-det-hdr">Detalle SKU</div>
-      <div id="inv-det-body" style="padding:16px;color:#45455E;font-size:10px;text-align:center;margin-top:20px">Selecciona un SKU</div>
+      <div id="inv-det-body" style="padding:16px;color:#999999;font-size:10px;text-align:center;margin-top:20px">Selecciona un SKU</div>
     </div>
   </div>
 </div>
 <div id="chk-view">
   <div id="chk-toolbar">
     <input id="chk-search" type="text" placeholder="Buscar SKU, shipment, usuario…" oninput="chkFiltrar()">
-    <button id="chk-sort-btn" onclick="chkToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #252540;background:transparent;color:#7878A0;cursor:pointer;white-space:nowrap">↑ Mayor</button>
+    <button id="chk-sort-btn" onclick="chkToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #D9D9D9;background:transparent;color:#666666;cursor:pointer;white-space:nowrap">↑ Mayor</button>
     <button class="chk-filter-btn on f-pend" id="chk-f-pend" onclick="chkToggle('pend')">⏳ Pendientes</button>
     <button class="chk-filter-btn on f-over" id="chk-f-over" onclick="chkToggle('over')">🔴 Sobre SLA</button>
     <button class="chk-filter-btn on f-done" id="chk-f-done" onclick="chkToggle('done')">✓ Completados</button>
     <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')">🏷 Solo NT</button>
     <div id="chk-kpis">
-      <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#FFE600">—</div><div class="chk-kl">Total</div></div>
-      <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#FFE600">—</div><div class="chk-kl">En Putaway</div></div>
-      <div class="chk-kpi"><div class="chk-kv" id="ck-pend" style="color:#e3b341">—</div><div class="chk-kl">Pendientes</div></div>
-      <div class="chk-kpi"><div class="chk-kv" id="ck-over" style="color:#f85149">—</div><div class="chk-kl">Sobre SLA</div></div>
-      <div class="chk-kpi"><div class="chk-kv" id="ck-done" style="color:#3fb950">—</div><div class="chk-kl">Completos</div></div>
-      <div class="chk-kpi"><div class="chk-kv" id="ck-upd" style="color:#45455E;font-size:9px">—</div><div class="chk-kl">Actualizado</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#3483FA">—</div><div class="chk-kl">Total</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#3483FA">—</div><div class="chk-kl">En Putaway</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-pend" style="color:#F5A623">—</div><div class="chk-kl">Pendientes</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-over" style="color:#F23D4F">—</div><div class="chk-kl">Sobre SLA</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-done" style="color:#00A650">—</div><div class="chk-kl">Completos</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-upd" style="color:#999999;font-size:9px">—</div><div class="chk-kl">Actualizado</div></div>
     </div>
   </div>
   <div id="chk-body">
@@ -363,8 +367,8 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
       </table>
     </div>
     <div id="chk-detail">
-      <div id="chk-det-hdr" style="color:#FFE600">Detalle</div>
-      <div id="chk-det-body" style="padding:20px;color:#45455E;font-size:10px;text-align:center">Selecciona un ítem</div>
+      <div id="chk-det-hdr" style="color:#3483FA">Detalle</div>
+      <div id="chk-det-body" style="padding:20px;color:#999999;font-size:10px;text-align:center">Selecciona un ítem</div>
     </div>
   </div>
 </div>
@@ -373,20 +377,20 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 // ── Colores ────────────────────────────────────────────────────────────────
 // 0=vacío  1=verde  2=amarillo  3=naranja  4+=rojo
 function skuColor(n){
-  if(n<=0) return '#111820';
-  if(n===1) return '#3fb950';  // verde
-  if(n===2) return '#e3b341';  // amarillo
+  if(n<=0) return '#E8E8E8';
+  if(n===1) return '#00A650';  // verde
+  if(n===2) return '#F5A623';  // amarillo
   if(n===3) return '#d07030';  // naranja
-  return '#f85149';            // rojo (4+)
+  return '#F23D4F';            // rojo (4+)
 }
 function blSkuColor(n){ return skuColor(n); }
 
 // ── Tabs BL ────────────────────────────────────────────────────────────────
 const BL_TABS = [
   { id:'Handstack', label:'BL-0-Handstack', color:'#00d4ff', aisles:[1,2,3,4,5,6,7,8,9] },
-  { id:'OUT1',      label:'BL0-OUT1',       color:'#e3b341', aisles:[10,11,12] },
-  { id:'OUT2',      label:'BL0-OUT2',       color:'#3fb950', aisles:[100,101,102] },
-  { id:'Other',     label:'OTRAS BL',       color:'#7878A0', aisles:[59,60,61,203,204,205,206,207,208,209,210,310,311,312,315,501,502,503,504,601,602,603,604,605,606] },
+  { id:'OUT1',      label:'BL0-OUT1',       color:'#F5A623', aisles:[10,11,12] },
+  { id:'OUT2',      label:'BL0-OUT2',       color:'#00A650', aisles:[100,101,102] },
+  { id:'Other',     label:'OTRAS BL',       color:'#666666', aisles:[59,60,61,203,204,205,206,207,208,209,210,310,311,312,315,501,502,503,504,601,602,603,604,605,606] },
 ];
 
 function getBLZone(aisle, bay){
@@ -398,11 +402,11 @@ function getBLZone(aisle, bay){
 
 // ── Zonas RK accordion ─────────────────────────────────────────────────────
 const ZONE_DEFS = [
-  { id:'ZA',  zp:'RK', label:'RK — Z-A  (P005–P012)', color:'#3fb950',
+  { id:'ZA',  zp:'RK', label:'RK — Z-A  (P005–P012)', color:'#00A650',
     aisles:[5,6,7,8,9,10,11,12], maxBay:50, step:10 },
   { id:'ZA2', zp:'RK', label:'RK — Z-A2 (P013–P018)', color:'#56d364',
     aisles:[13,14,15,16,17,18], maxBay:50, step:10 },
-  { id:'ZB', zp:'RK', label:'RK — Z-B  (P101–P123)', color:'#FFE600',
+  { id:'ZB', zp:'RK', label:'RK — Z-B  (P101–P123)', color:'#3483FA',
     aisles:[101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123], maxBay:66, step:10 },
 ];
 
@@ -411,12 +415,12 @@ let DAY={}, BAYS=[], bayMap={}, selKey=null, CATALOG={}, RESP={}, BL_WMS_LAYOUT=
 let VIEW_MODE='sku'; // 'sku' | 'vol'
 
 function volColor(pct){
-  if(pct<=0)  return '#111820';
-  if(pct<=30) return '#1a3a26';
+  if(pct<=0)  return '#E8E8E8';
+  if(pct<=30) return '#E6F7EE';
   if(pct<=60) return '#2d7a4a';
-  if(pct<=80) return '#e3b341';
+  if(pct<=80) return '#F5A623';
   if(pct<=95) return '#d07030';
-  return '#f85149';
+  return '#F23D4F';
 }
 
 function bayVolData(b){
@@ -433,9 +437,9 @@ function toggleViewMode(){
   VIEW_MODE = VIEW_MODE==='sku' ? 'vol' : 'sku';
   const btn = document.getElementById('btn-view-mode');
   if(VIEW_MODE==='vol'){
-    btn.textContent='📦 Ver por SKU'; btn.style.borderColor='#e3b341'; btn.style.color='#e3b341';
+    btn.textContent='📦 Ver por SKU'; btn.style.borderColor='#F5A623'; btn.style.color='#F5A623';
   } else {
-    btn.textContent='📐 Ver por Volumen'; btn.style.borderColor='#252540'; btn.style.color='#7878A0';
+    btn.textContent='📐 Ver por Volumen'; btn.style.borderColor='#D9D9D9'; btn.style.color='#666666';
   }
   buildGrid();
   if(selKey && bayMap[selKey]){ document.querySelector(`[data-key="${CSS.escape(selKey)}"]`)?.classList.add('sel'); }
@@ -537,7 +541,7 @@ async function loadData(){
       renderRanking();
     }
   }catch(e){
-    document.getElementById('mapwrap').innerHTML=`<div style="color:#f85149;padding:20px">${e.message}</div>`;
+    document.getElementById('mapwrap').innerHTML=`<div style="color:#F23D4F;padding:20px">${e.message}</div>`;
   }finally{
     document.getElementById('btnRef').classList.remove('spin');
   }
@@ -608,7 +612,7 @@ function buildGrid(){
   function renderRow(zone, aisle, bayMax, lvl, pos, label, gridW, isBL){
     const lbl=label
       ? `<span style="color:#6e7681;font-size:6px;font-family:monospace">${label}</span>`
-      : `<span style="color:#45455E;font-size:8px;font-family:monospace">P${String(aisle).padStart(3,'0')}</span>`;
+      : `<span style="color:#999999;font-size:8px;font-family:monospace">P${String(aisle).padStart(3,'0')}</span>`;
     parts.push(`<div class="aisle-row"><div class="aisle-lbl">${lbl}</div>`);
     parts.push(`<div class="bay-grid" style="grid-template-columns:repeat(${bayMax},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px">`);
     for(let bay=1;bay<=bayMax;bay++){
@@ -623,7 +627,7 @@ function buildGrid(){
         // Indicador sin movimiento: punto naranja si algún SKU lleva ≥30 días sin picking
         const smData=SINMOV[sl.id];
         const maxDias=smData?Math.max(...Object.values(smData)):0;
-        const smDot=maxDias>=30?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#e3b341;pointer-events:none"></span>`:'';
+        const smDot=maxDias>=30?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#F5A623;pointer-events:none"></span>`:'';
         const wrapStyle=smDot?'position:relative;overflow:visible':'';
         parts.push(`<div class="bc" style="background:${bgFinal};${wrapStyle}" data-key="${bayKey}" data-slot="${sl.id}" title="${slKey}">${smDot}</div>`);
       }else if(bayExists){
@@ -650,7 +654,7 @@ function buildGrid(){
       if(maxN===0){ parts.push(`<div class="bc empty" data-key="${bayKey}" data-level="${lvl}"></div>`); continue; }
       const bg=VIEW_MODE==='vol'?volColor(bayVolData(b).pct):skuColor(maxN);
       const hasSinMov=levelSlots.some(s=>{const sm=SINMOV[s.id];return sm&&Math.max(...Object.values(sm))>=30;});
-      const smDot=hasSinMov?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#e3b341;pointer-events:none"></span>`:'';
+      const smDot=hasSinMov?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#F5A623;pointer-events:none"></span>`:'';
       const wrapStyle=smDot?'position:relative;overflow:visible':'';
       parts.push(`<div class="bc" style="background:${bg};${wrapStyle}" data-key="${bayKey}" data-level="${lvl}">${smDot}</div>`);
     }
@@ -660,8 +664,8 @@ function buildGrid(){
   // Separador entre pasillos
   function aisleHeader(label){
     parts.push(`<div style="display:flex;align-items:center;height:14px;margin:2px 0 0 0">`);
-    parts.push(`<div style="width:62px;flex-shrink:0;font-size:9px;font-weight:700;color:#FFE600;font-family:monospace;text-align:right;padding-right:7px">${label}</div>`);
-    parts.push(`<div style="flex:1;height:1px;background:#18182A"></div></div>`);
+    parts.push(`<div style="width:62px;flex-shrink:0;font-size:9px;font-weight:700;color:#3483FA;font-family:monospace;text-align:right;padding-right:7px">${label}</div>`);
+    parts.push(`<div style="flex:1;height:1px;background:#F5F5F5"></div></div>`);
   }
 
   // ── BL section ────────────────────────────────────────────────────────
@@ -702,7 +706,7 @@ function buildGrid(){
     parts.push(`<button class="bl-tab-btn ${active?'bl-tab-active':''}" style="color:${active?t.color:''};" onclick="setBLTab('${t.id}')">${t.label}</button>`);
   });
   parts.push(`</div><div class="bl-tab-content">`);
-  parts.push(`<div style="font-size:9px;color:#45455E;margin-bottom:6px">${tabPct}% ocupación · ${tabBays} bays · ${tabMaxBay} cols &nbsp;·&nbsp; <span style="color:#4da6ff;font-weight:600">${tabEmpty} vacías</span> · <span style="color:#4da6ff">${tabDispPct}% disponibles</span></div>`);
+  parts.push(`<div style="font-size:9px;color:#999999;margin-bottom:6px">${tabPct}% ocupación · ${tabBays} bays · ${tabMaxBay} cols &nbsp;·&nbsp; <span style="color:#4da6ff;font-weight:600">${tabEmpty} vacías</span> · <span style="color:#4da6ff">${tabDispPct}% disponibles</span></div>`);
   parts.push(`<div class="zone-scroll">`);
   parts.push(`<div class="bay-axis-row"><div class="axis-lbl-spacer"></div>`);
   parts.push(`<div class="axis-inner" style="grid-template-columns:repeat(${tabMaxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW}px;flex:1">`);
@@ -728,7 +732,7 @@ function buildGrid(){
     const gridW2=Math.max(zd.maxBay*(CELL_MIN+1),200);
     const collapsed=!openZones.has(zd.id)?'collapsed':'';
     parts.push(`<div class="zone-section ${collapsed}" id="zs-${zd.id}">`);
-    parts.push(`<div class="zone-hdr" onclick="toggleZone('${zd.id}')"><span style="color:${zd.color}">${zd.label}</span><span style="font-weight:400;color:#45455E;font-size:9px;margin-left:auto">${zoneMeta(zd)}</span></div>`);
+    parts.push(`<div class="zone-hdr" onclick="toggleZone('${zd.id}')"><span style="color:${zd.color}">${zd.label}</span><span style="font-weight:400;color:#999999;font-size:9px;margin-left:auto">${zoneMeta(zd)}</span></div>`);
     parts.push(`<div class="zone-body"><div class="zone-body-inner"><div class="zone-scroll">`);
     parts.push(`<div class="bay-axis-row"><div class="axis-lbl-spacer"></div>`);
     parts.push(`<div class="axis-inner" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px;flex:1">`);
@@ -760,7 +764,7 @@ mapwrap.addEventListener('mousemove',e=>{
   const b=bayMap[cell.dataset.key];
   if(!b){
     const [z,a,by]=cell.dataset.key.split('-');
-    tip.innerHTML=`<div style="font-family:monospace;font-weight:700;color:#4da6ff;margin-bottom:4px">${z} · Pasillo ${a} · Bay ${by}</div><div style="color:#3fb950;font-size:9px">Disponible · Sin stock</div>`;
+    tip.innerHTML=`<div style="font-family:monospace;font-weight:700;color:#4da6ff;margin-bottom:4px">${z} · Pasillo ${a} · Bay ${by}</div><div style="color:#00A650;font-size:9px">Disponible · Sin stock</div>`;
     tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px'; tip.classList.add('vis');
     document.getElementById('s-zone').textContent=z; document.getElementById('s-aisle').textContent=a; document.getElementById('s-bay').textContent=by;
     document.getElementById('s-msg').textContent='Disponible · Sin stock';
@@ -772,7 +776,7 @@ mapwrap.addEventListener('mousemove',e=>{
   const pct=Math.round(slotsOcc/b.n_slots*100);               // % slots ocupados
   const vd=bayVolData(b);
   const volHtmlTip=vd.totL>0?`
-    <div style="margin-top:4px;border-top:1px solid #18182A;padding-top:4px">
+    <div style="margin-top:4px;border-top:1px solid #F5F5F5;padding-top:4px">
       <div class="tr"><span class="tl">Vol. ocupado:</span><span class="tv" style="color:${volColor(vd.pct)}">${vd.pct}% · ${vd.usadoL} / ${vd.totL} L</span></div>
       <div class="tr"><span class="tl">Peso ocupado:</span><span class="tv">${vd.pesoUsado} / ${vd.pesoMax} kg</span></div>
     </div>`:'';
@@ -787,7 +791,7 @@ mapwrap.addEventListener('mousemove',e=>{
   }));
   const procIcon=lastPAProc==='transfer'?'🔄 Transfer':'📦 Put Away';
   tip.innerHTML=`
-    <div style="font-family:monospace;font-weight:700;color:#FFE600;margin-bottom:4px">${b.zone} · Pasillo ${b.aisle} · Bay ${b.bay}</div>
+    <div style="font-family:monospace;font-weight:700;color:#3483FA;margin-bottom:4px">${b.zone} · Pasillo ${b.aisle} · Bay ${b.bay}</div>
     <div class="tr"><span class="tl">Slots totales:</span><span class="tv">${b.n_slots}</span></div>
     <div class="tr"><span class="tl">Slots ocupados:</span><span class="tv">${slotsOcc} / ${b.n_slots}</span></div>
     <div class="tr"><span class="tl">% Ocupación:</span><span class="tv">${pct}%</span></div>
@@ -796,7 +800,7 @@ mapwrap.addEventListener('mousemove',e=>{
     <div class="tr"><span class="tl">Qty total:</span><span class="tv">${b.qty.toLocaleString()}</span></div>
     <div class="tr"><span class="tl">Disponible:</span><span class="tv">${b.avail.toLocaleString()}</span></div>
     ${volHtmlTip}
-    ${lastPA?`<div class="tr" style="margin-top:4px;border-top:1px solid #18182A;padding-top:4px"><span class="tl">${procIcon}:</span><span class="tv" style="${lastPAUnknown?'color:#45455E;font-style:italic':'color:#e3b341'};font-family:monospace">${lastPA}</span></div><div class="tr"><span class="tl">Fecha:</span><span class="tv" style="color:#45455E">${lastPADate}</span></div>`:''}
+    ${lastPA?`<div class="tr" style="margin-top:4px;border-top:1px solid #F5F5F5;padding-top:4px"><span class="tl">${procIcon}:</span><span class="tv" style="${lastPAUnknown?'color:#999999;font-style:italic':'color:#F5A623'};font-family:monospace">${lastPA}</span></div><div class="tr"><span class="tl">Fecha:</span><span class="tv" style="color:#999999">${lastPADate}</span></div>`:''}
   `;
   tip.style.left=(e.clientX+14)+'px';
   tip.style.top=(e.clientY-10)+'px';
@@ -845,25 +849,25 @@ function _skuCard(sk, smData, qty, avail){
   const brand=cat.brand||'';
   const img=cat.img||'';
   const dias=smData[sk];
-  const sinBadge=dias!=null?(dias>=60?`<span style="color:#f85149;font-size:9px">⏱ ${dias}d sin mov</span>`:dias>=30?`<span style="color:#e3b341;font-size:9px">⏱ ${dias}d sin mov</span>`:''):'';
+  const sinBadge=dias!=null?(dias>=60?`<span style="color:#F23D4F;font-size:9px">⏱ ${dias}d sin mov</span>`:dias>=30?`<span style="color:#F5A623;font-size:9px">⏱ ${dias}d sin mov</span>`:''):'';
   const imgEl=img
-    ?`<img src="${img}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:4px;background:#08080E;flex-shrink:0" onerror="this.style.display='none'">`
-    :`<div style="width:52px;height:52px;border-radius:4px;background:#18182A;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>`;
+    ?`<img src="${img}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:4px;background:#EBEBEB;flex-shrink:0" onerror="this.style.display='none'">`
+    :`<div style="width:52px;height:52px;border-radius:4px;background:#F5F5F5;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>`;
   const qtyBadge=qty!=null
-    ?`<span style="padding:2px 7px;border-radius:10px;background:#1C1900;color:#FFE600;font-size:10px;font-weight:700;border:1px solid #B8A800">${qty.toLocaleString()} u</span>`
+    ?`<span style="padding:2px 7px;border-radius:10px;background:#EBF2FF;color:#3483FA;font-size:10px;font-weight:700;border:1px solid #2968C8">${qty.toLocaleString()} u</span>`
     :'';
   const availBadge=avail!=null
-    ?`<span style="padding:2px 7px;border-radius:10px;background:#08080E;color:#3fb950;font-size:9px;border:1px solid #238636">${avail.toLocaleString()} disp</span>`
+    ?`<span style="padding:2px 7px;border-radius:10px;background:#EBEBEB;color:#00A650;font-size:9px;border:1px solid #238636">${avail.toLocaleString()} disp</span>`
     :'';
-  return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #252540;align-items:flex-start">
+  return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #D9D9D9;align-items:flex-start">
     ${imgEl}
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-        <span style="font-family:monospace;font-size:10px;color:#FFE600;font-weight:700">${sk}</span>
+        <span style="font-family:monospace;font-size:10px;color:#3483FA;font-weight:700">${sk}</span>
         ${sinBadge}
       </div>
-      ${name?`<div style="font-size:10px;color:#E0E0EE;margin-bottom:3px;line-height:1.3">${name}</div>`:''}
-      ${brand?`<div style="font-size:9px;color:#7878A0;margin-bottom:4px">${brand}</div>`:''}
+      ${name?`<div style="font-size:10px;color:#333333;margin-bottom:3px;line-height:1.3">${name}</div>`:''}
+      ${brand?`<div style="font-size:9px;color:#666666;margin-bottom:4px">${brand}</div>`:''}
       ${(qtyBadge||availBadge)?`<div style="display:flex;gap:5px;flex-wrap:wrap">${qtyBadge}${availBadge}</div>`:''}
     </div>
   </div>`;
@@ -876,17 +880,17 @@ function abrirBayLevelModal(bayKey,lvl){
   const body=document.getElementById('modal-body');
   const [zone,aisle,bay]=bayKey.split('-');
   title.textContent=`${zone} · Pasillo ${aisle} · Bay ${bay} · Nivel L${lvl}`;
-  if(!b){ body.innerHTML=`<div style="color:#7878A0;font-size:11px;text-align:center;padding:20px">Bay no encontrado</div>`; modal.classList.add('vis'); return; }
+  if(!b){ body.innerHTML=`<div style="color:#666666;font-size:11px;text-align:center;padding:20px">Bay no encontrado</div>`; modal.classList.add('vis'); return; }
   const levelSlots=b.slots.filter(s=>s.level===lvl).sort((a,z)=>a.pos-z.pos).filter(s=>s.skus.length>0);
-  if(!levelSlots.length){ body.innerHTML=`<div style="color:#7878A0;font-size:11px;text-align:center;padding:20px">Nivel vacío</div>`; modal.classList.add('vis'); return; }
+  if(!levelSlots.length){ body.innerHTML=`<div style="color:#666666;font-size:11px;text-align:center;padding:20px">Nivel vacío</div>`; modal.classList.add('vis'); return; }
   const rows=levelSlots.map(slot=>{
     const col=skuColor(slot.skus.length);
     const smData=SINMOV[slot.id]||{};
     const skuRows=slot.skus.map(sk=>{const q=slot.sku_qtys&&slot.sku_qtys[sk];return _skuCard(sk,smData,q?q.qty:null,q?q.avail:null);}).join('');
-    return `<div style="margin-bottom:10px;padding:10px;background:#18182A;border-radius:6px;border-left:3px solid ${col}">
+    return `<div style="margin-bottom:10px;padding:10px;background:#F5F5F5;border-radius:6px;border-left:3px solid ${col}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-family:monospace;font-size:10px;font-weight:700;color:${col}">${slot.id}</span>
-        <span style="font-size:9px;color:#45455E">${slot.skus.length} SKU${slot.skus.length!==1?'s':''} · ${slot.qty||0} u · ${slot.avail||0} disp</span>
+        <span style="font-size:9px;color:#999999">${slot.skus.length} SKU${slot.skus.length!==1?'s':''} · ${slot.qty||0} u · ${slot.avail||0} disp</span>
       </div>
       ${skuRows}
     </div>`;
@@ -905,7 +909,7 @@ function abrirSlotModal(slotId, bayKey){
   title.textContent = slotId;
 
   if(!slot || slot.skus.length===0){
-    body.innerHTML=`<div style="color:#7878A0;font-size:11px;text-align:center;padding:20px">Ubicación vacía</div>`;
+    body.innerHTML=`<div style="color:#666666;font-size:11px;text-align:center;padding:20px">Ubicación vacía</div>`;
     modal.classList.add('vis');
     return;
   }
@@ -918,19 +922,19 @@ function abrirSlotModal(slotId, bayKey){
   const col = b.zone==='BL'?blSkuColor(slot.skus.length):skuColor(slot.skus.length);
 
   body.innerHTML = `
-    <div style="display:flex;gap:16px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #252540">
+    <div style="display:flex;gap:16px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #D9D9D9">
       <div style="text-align:center">
         <div style="font-size:22px;font-weight:700;color:${col}">${slot.skus.length}</div>
-        <div style="font-size:9px;color:#45455E">SKUs / ${slotCap}</div>
+        <div style="font-size:9px;color:#999999">SKUs / ${slotCap}</div>
       </div>
       <div style="flex:1">
-        <div style="height:6px;background:#18182A;border-radius:3px;margin-bottom:6px">
+        <div style="height:6px;background:#F5F5F5;border-radius:3px;margin-bottom:6px">
           <div style="height:100%;width:${pctBar}%;background:${col};border-radius:3px"></div>
         </div>
-        <div style="font-size:9px;color:#7878A0">${slot.qty||0} unidades · ${slot.avail||0} disponibles</div>
+        <div style="font-size:9px;color:#666666">${slot.qty||0} unidades · ${slot.avail||0} disponibles</div>
       </div>
     </div>
-    <div style="font-size:10px;font-weight:700;color:#45455E;margin-bottom:6px">PRODUCTOS EN ESTA UBICACIÓN</div>
+    <div style="font-size:10px;font-weight:700;color:#999999;margin-bottom:6px">PRODUCTOS EN ESTA UBICACIÓN</div>
     ${rows}
   `;
   modal.classList.add('vis');
@@ -952,27 +956,27 @@ function renderRanking(){
 
   const rows=top.map((e,i)=>{
     const {key,b,occ,pct}=e;
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:#45455E">${String(i+1).padStart(2,'0')}</span>`;
-    const bar=`<div style="flex:1;height:4px;background:#18182A;border-radius:2px;overflow:hidden;min-width:40px">
-      <div style="height:100%;width:${pct}%;background:${pct>=90?'#f85149':pct>=70?'#e3b341':'#3fb950'};border-radius:2px"></div>
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:#999999">${String(i+1).padStart(2,'0')}</span>`;
+    const bar=`<div style="flex:1;height:4px;background:#F5F5F5;border-radius:2px;overflow:hidden;min-width:40px">
+      <div style="height:100%;width:${pct}%;background:${pct>=90?'#F23D4F':pct>=70?'#F5A623':'#00A650'};border-radius:2px"></div>
     </div>`;
     const addr=`${b.zone}-0-${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
-    const pctColor=pct>=90?'#f85149':pct>=70?'#e3b341':'#3fb950';
+    const pctColor=pct>=90?'#F23D4F':pct>=70?'#F5A623':'#00A650';
     return `<div onclick="rankClick('${key}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;
-      border-bottom:1px solid #18182A;transition:background .1s" onmouseover="this.style.background='#18182A'" onmouseout="this.style.background=''">
+      border-bottom:1px solid #F5F5F5;transition:background .1s" onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
       <span style="font-size:12px;min-width:22px;text-align:center">${medal}</span>
-      <span style="font-family:monospace;font-size:9px;color:#FFE600;min-width:90px">${addr}</span>
+      <span style="font-family:monospace;font-size:9px;color:#3483FA;min-width:90px">${addr}</span>
       ${bar}
       <span style="font-size:10px;font-weight:700;color:${pctColor};min-width:34px;text-align:right">${pct}%</span>
-      <span style="font-size:8px;color:#45455E;white-space:nowrap">${occ}/${b.n_slots}</span>
+      <span style="font-size:8px;color:#999999;white-space:nowrap">${occ}/${b.n_slots}</span>
     </div>`;
   }).join('');
 
   body.innerHTML=`
-    <div style="font-size:9px;color:#45455E;padding:6px 8px;border-bottom:1px solid #18182A;margin-bottom:4px">
+    <div style="font-size:9px;color:#999999;padding:6px 8px;border-bottom:1px solid #F5F5F5;margin-bottom:4px">
       Top 50 ubicaciones por % de slots ocupados · Click para ver detalle
     </div>
-    ${rows||'<div style="color:#7878A0;font-size:10px;text-align:center;margin-top:20px">Sin datos de ocupación</div>'}`;
+    ${rows||'<div style="color:#666666;font-size:10px;text-align:center;margin-top:20px">Sin datos de ocupación</div>'}`;
 }
 
 function rankClick(key){
@@ -1000,8 +1004,8 @@ function renderDetail(b,key){
       <div class="det-bay">${zone}-0-${String(aisle).padStart(3,'0')}-${String(bay).padStart(3,'0')}-xx-xx</div>
       <div style="margin-top:16px;text-align:center">
         <div style="font-size:22px;margin-bottom:6px">📦</div>
-        <div style="color:#3fb950;font-size:11px;font-weight:600">Ubicación Disponible</div>
-        <div style="color:#45455E;font-size:9px;margin-top:4px">Sin stock asignado en este bay</div>
+        <div style="color:#00A650;font-size:11px;font-weight:600">Ubicación Disponible</div>
+        <div style="color:#999999;font-size:9px;margin-top:4px">Sin stock asignado en este bay</div>
       </div>`;
     return;
   }
@@ -1019,18 +1023,18 @@ function renderDetail(b,key){
   const nomBadges=[...tiposSet].map(t=>{
     const nt=t.toUpperCase().includes('NT');
     return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;
-      background:${nt?'#1C1900':'#18182A'};color:${nt?'#FFE600':'#7878A0'};
-      border:1px solid ${nt?'#B8A800':'#252540'};font-family:monospace">${t}</span>`;
+      background:${nt?'#EBF2FF':'#F5F5F5'};color:${nt?'#3483FA':'#666666'};
+      border:1px solid ${nt?'#2968C8':'#D9D9D9'};font-family:monospace">${t}</span>`;
   }).join(' ');
   const claseBadges=[...clasesSet].map(c=>`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;
-    background:#18182A;color:#7878A0;border:1px solid #252540;font-family:monospace">${c}</span>`).join(' ');
+    background:#F5F5F5;color:#666666;border:1px solid #D9D9D9;font-family:monospace">${c}</span>`).join(' ');
 
   body.innerHTML=`
     <div class="det-bay">${b.zone}-0-${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}-xx-xx
-      ${isNT?'<span style="margin-left:6px;padding:1px 6px;border-radius:8px;background:#1C1900;color:#FFE600;font-size:8px;border:1px solid #B8A800">🏷 No Toteable</span>':''}
+      ${isNT?'<span style="margin-left:6px;padding:1px 6px;border-radius:8px;background:#EBF2FF;color:#3483FA;font-size:8px;border:1px solid #2968C8">🏷 No Toteable</span>':''}
     </div>
     ${(nomBadges||claseBadges)?`<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-      <span style="font-size:8px;color:#45455E">Nomenclatura:</span>${nomBadges}${claseBadges}
+      <span style="font-size:8px;color:#999999">Nomenclatura:</span>${nomBadges}${claseBadges}
     </div>`:''}
     <div class="det-stat">
       <b>${b.n_slots}</b> slots &nbsp;·&nbsp; <b>${slotsOcc2}</b>/<b>${b.n_slots}</b> ocupados &nbsp;·&nbsp; <b>${pct}%</b>
@@ -1041,22 +1045,22 @@ function renderDetail(b,key){
       const n=s.skus.length, p=Math.min(Math.round(n/slotCap*100),100), col=b.zone==='BL'?blSkuColor(n):skuColor(n);
       const vd=VOLDATA[s.id];
       const volHtml=vd?`
-        <div style="margin-bottom:4px;padding:3px 6px;background:#08080E;border-radius:3px;border-left:2px solid #252540">
-          <div style="display:flex;gap:8px;align-items:center;font-size:8px;color:#7878A0;margin-bottom:2px">
+        <div style="margin-bottom:4px;padding:3px 6px;background:#EBEBEB;border-radius:3px;border-left:2px solid #D9D9D9">
+          <div style="display:flex;gap:8px;align-items:center;font-size:8px;color:#666666;margin-bottom:2px">
             <span title="Alto × Ancho × Profundidad">📐 ${vd.alto_cm}×${vd.ancho_cm}×${vd.prof_cm} cm</span>
             <span title="Peso máximo">⚖️ ${vd.peso_max_kg} kg max</span>
           </div>
           <div style="display:flex;gap:6px;align-items:center">
-            <div style="flex:1;height:3px;background:#18182A;border-radius:2px;overflow:hidden">
-              <div style="height:100%;width:${Math.min(vd.pct_vol,100)}%;background:${vd.pct_vol>85?'#f85149':vd.pct_vol>60?'#e3b341':'#3fb950'};border-radius:2px"></div>
+            <div style="flex:1;height:3px;background:#F5F5F5;border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${Math.min(vd.pct_vol,100)}%;background:${vd.pct_vol>85?'#F23D4F':vd.pct_vol>60?'#F5A623':'#00A650'};border-radius:2px"></div>
             </div>
-            <span style="font-size:8px;color:${vd.pct_vol>85?'#f85149':vd.pct_vol>60?'#e3b341':'#3fb950'};white-space:nowrap;font-weight:700">${vd.pct_vol}%</span>
-            <span style="font-size:8px;color:#45455E;white-space:nowrap">${vd.vol_usado_l.toFixed(2)} / ${vd.volumen_l} L</span>
+            <span style="font-size:8px;color:${vd.pct_vol>85?'#F23D4F':vd.pct_vol>60?'#F5A623':'#00A650'};white-space:nowrap;font-weight:700">${vd.pct_vol}%</span>
+            <span style="font-size:8px;color:#999999;white-space:nowrap">${vd.vol_usado_l.toFixed(2)} / ${vd.volumen_l} L</span>
           </div>
-          ${vd.peso_usado_kg>0?`<div style="font-size:8px;color:#7878A0;margin-top:2px">Peso: <b style="color:#E0E0EE">${vd.peso_usado_kg} kg</b> / ${vd.peso_max_kg} kg</div>`:''}
+          ${vd.peso_usado_kg>0?`<div style="font-size:8px;color:#666666;margin-top:2px">Peso: <b style="color:#333333">${vd.peso_usado_kg} kg</b> / ${vd.peso_max_kg} kg</div>`:''}
         </div>`:'';
-      return `<div class="slot-card" style="border-left:3px solid ${n>0?col:'#252540'};background:${n>0?col+'18':'#08080E'}">
-        <div class="slot-addr" style="color:${n>0?col:'#FFE60088'}">${s.id}</div>
+      return `<div class="slot-card" style="border-left:3px solid ${n>0?col:'#D9D9D9'};background:${n>0?col+'18':'#EBEBEB'}">
+        <div class="slot-addr" style="color:${n>0?col:'#3483FA88'}">${s.id}</div>
         <div class="occ-bar"><div class="occ-fill" style="width:${p}%;background:${col}"></div></div>
         <div style="font-size:9px;color:${col};margin-bottom:5px">${n}/${slotCap} SKUs &nbsp;·&nbsp; ${s.qty} u &nbsp;·&nbsp; ${s.avail} disp</div>
         ${volHtml}
@@ -1064,31 +1068,31 @@ function renderDetail(b,key){
           const cat=CATALOG[sk];
           const resp=RESP[`${s.id}|${sk}`];
           const smDias=(SINMOV[s.id]||{})[sk];
-          const smBadge=smDias!=null?(smDias>=30?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:#3d2a0a;color:#e3b341;border:1px solid #e3b34144;margin-left:4px">⏱ ${smDias}d sin mov</span>`:(smDias>=14?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:#1a2f1a;color:#6e9b6e;border:1px solid #3fb95044;margin-left:4px">${smDias}d</span>`:'')):'';
+          const smBadge=smDias!=null?(smDias>=30?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:#3d2a0a;color:#F5A623;border:1px solid #F5A62344;margin-left:4px">⏱ ${smDias}d sin mov</span>`:(smDias>=14?`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:#E6F7EE;color:#6e9b6e;border:1px solid #00A65044;margin-left:4px">${smDias}d</span>`:'')):'';
           const proc=resp?.proc||'put_away';
           const procIcon=proc==='transfer'?'🔄 Transfer':'📦 Put Away';
           const hasName=resp&&resp.name;
           const displayName=hasName?resp.name:(resp?`Op. #${resp.user}`:'');
           const respHtml=resp
-            ?`<div class="prod-resp">${procIcon}: <span class="${hasName?'ruser':''}" style="${hasName?'':'color:#45455E;font-style:italic;font-family:monospace'}">${displayName}</span><span class="rdate">&nbsp;· ${resp.date}</span></div>`
+            ?`<div class="prod-resp">${procIcon}: <span class="${hasName?'ruser':''}" style="${hasName?'':'color:#999999;font-style:italic;font-family:monospace'}">${displayName}</span><span class="rdate">&nbsp;· ${resp.date}</span></div>`
             :'';
           if(cat&&cat.title){
             const url=cat.item_id?`https://www.mercadolibre.cl/p/${cat.item_id}`:'';
             const imgHtml=cat.img
               ?`<img class="prod-img" src="${cat.img}" alt="" onerror="this.style.display='none'">`
               :'';
-            return `<div style="margin-bottom:4px;padding:4px;background:#18182A;border-radius:4px">
+            return `<div style="margin-bottom:4px;padding:4px;background:#F5F5F5;border-radius:4px">
               <div class="prod-row">
                 ${imgHtml}
                 <div class="prod-info">
-                  <div class="prod-title">${url?`<a href="${url}" target="_blank" style="color:#FFE600;text-decoration:none">${cat.title}</a>`:cat.title}</div>
+                  <div class="prod-title">${url?`<a href="${url}" target="_blank" style="color:#3483FA;text-decoration:none">${cat.title}</a>`:cat.title}</div>
                   <div class="prod-meta"><span class="sku-chip">${sk}</span>&nbsp;${cat.brand||''}${smBadge}</div>
                   ${respHtml}
                 </div>
               </div>
             </div>`;
           }
-          return `<div style="margin-bottom:4px;padding:4px;background:#18182A;border-radius:4px">
+          return `<div style="margin-bottom:4px;padding:4px;background:#F5F5F5;border-radius:4px">
             <div class="prod-meta"><span class="sku-chip">${sk}</span>${smBadge}</div>
             ${respHtml}
           </div>`;
@@ -1219,9 +1223,9 @@ function invRender(){
       `<span class="inv-area-tag inv-area-${a.toLowerCase()}">${a}</span>`).join(' ');
     return `<tr class="${INV_SEL===o.sku?'inv-sel':''}" onclick="invSelSKU('${o.sku}')">
       <td><span class="inv-sku">${o.sku}</span></td>
-      <td><span style="font-family:monospace;font-size:9px;color:#7878A0">${o.ean||'<span style="color:#252540">—</span>'}</span></td>
-      <td><span class="inv-title" title="${o.title||''}">${o.title||'<span style="color:#45455E">—</span>'}</span></td>
-      <td><span class="inv-brand">${o.brand||'<span style="color:#45455E">—</span>'}</span></td>
+      <td><span style="font-family:monospace;font-size:9px;color:#666666">${o.ean||'<span style="color:#D9D9D9">—</span>'}</span></td>
+      <td><span class="inv-title" title="${o.title||''}">${o.title||'<span style="color:#999999">—</span>'}</span></td>
+      <td><span class="inv-brand">${o.brand||'<span style="color:#999999">—</span>'}</span></td>
       <td>${areaTagsHtml}</td>
       <td><span class="inv-qty">${o.qty.toLocaleString()}</span></td>
       <td><span class="inv-locs">${o.locs_n}</span></td>
@@ -1229,7 +1233,7 @@ function invRender(){
   }).join('');
   if(list.length>500){
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td colspan="6" style="text-align:center;padding:10px;color:#45455E;font-size:9px">Mostrando 500 de ${list.length.toLocaleString()} — refina la búsqueda</td>`;
+    tr.innerHTML=`<td colspan="6" style="text-align:center;padding:10px;color:#999999;font-size:9px">Mostrando 500 de ${list.length.toLocaleString()} — refina la búsqueda</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -1247,24 +1251,24 @@ function invSelSKU(sku){
   const cat=CATALOG[sku]||{};
   const imgId=`img-inv-${sku.replace(/[^a-z0-9]/gi,'_')}`;
   const imgHtml=cat.item_id
-    ?`<img id="${imgId}" src="" style="width:64px;height:64px;object-fit:contain;border-radius:4px;border:1px solid #252540;background:#08080E;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`
-    :(cat.img?`<img src="${cat.img}" style="width:64px;height:64px;object-fit:contain;border-radius:4px;border:1px solid #252540;background:#08080E;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`:'' );
+    ?`<img id="${imgId}" src="" style="width:64px;height:64px;object-fit:contain;border-radius:4px;border:1px solid #D9D9D9;background:#EBEBEB;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`
+    :(cat.img?`<img src="${cat.img}" style="width:64px;height:64px;object-fit:contain;border-radius:4px;border:1px solid #D9D9D9;background:#EBEBEB;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`:'' );
   if(cat.item_id) setTimeout(()=>fetchMeliImg(cat.item_id, imgId), 100);
-  const link=cat.item_id?`<a href="https://www.mercadolibre.cl/p/${cat.item_id}" target="_blank" style="color:#FFE600;font-size:10px">Ver en Meli ↗</a>`:'';
+  const link=cat.item_id?`<a href="https://www.mercadolibre.cl/p/${cat.item_id}" target="_blank" style="color:#3483FA;font-size:10px">Ver en Meli ↗</a>`:'';
 
   const locsHtml=o.locs.map(l=>{
     const pct=l.pct_vol!==null?l.pct_vol:null;
-    const barColor=pct!==null?volColor(pct):'#252540';
+    const barColor=pct!==null?volColor(pct):'#D9D9D9';
     const barW=pct!==null?pct:0;
     return `<div class="inv-loc-card">
       <div class="inv-loc-addr">${l.id}</div>
       <div class="inv-loc-meta">
         <span class="inv-area-tag inv-area-${(l.area||'').toLowerCase()}">${l.area||'?'}</span>
-        <span>Stock: <b style="color:#e3b341">${l.qty}</b></span>
+        <span>Stock: <b style="color:#F5A623">${l.qty}</b></span>
         <span>SKUs en slot: <b>${l.skus_count}</b></span>
         ${pct!==null?`<span style="color:${barColor}">Vol: ${pct}%</span>`:''}
       </div>
-      ${pct!==null?`<div style="margin-top:4px;height:3px;background:#18182A;border-radius:2px"><div style="width:${barW}%;height:100%;background:${barColor};border-radius:2px"></div></div>`:''}
+      ${pct!==null?`<div style="margin-top:4px;height:3px;background:#F5F5F5;border-radius:2px"><div style="width:${barW}%;height:100%;background:${barColor};border-radius:2px"></div></div>`:''}
     </div>`;
   }).join('');
 
@@ -1272,23 +1276,23 @@ function invSelSKU(sku){
   document.getElementById('inv-det-body').innerHTML=`
     ${imgHtml}
     <div style="margin-bottom:8px;text-align:center">
-      <div style="font-size:11px;font-weight:700;color:#E0E0EE;margin-bottom:2px">${cat.title||'Sin título'}</div>
-      ${cat.brand?`<div style="font-size:9px;color:#7878A0">${cat.brand}</div>`:''}
-      ${cat.domain?`<div style="font-size:9px;color:#45455E">${cat.domain}</div>`:''}
-      ${cat.ean?`<div style="font-size:9px;color:#45455E;font-family:monospace;margin-top:3px">EAN: <span style="color:#7878A0">${cat.ean}</span></div>`:''}
+      <div style="font-size:11px;font-weight:700;color:#333333;margin-bottom:2px">${cat.title||'Sin título'}</div>
+      ${cat.brand?`<div style="font-size:9px;color:#666666">${cat.brand}</div>`:''}
+      ${cat.domain?`<div style="font-size:9px;color:#999999">${cat.domain}</div>`:''}
+      ${cat.ean?`<div style="font-size:9px;color:#999999;font-family:monospace;margin-top:3px">EAN: <span style="color:#666666">${cat.ean}</span></div>`:''}
       ${link}
     </div>
     <div style="display:flex;gap:10px;margin-bottom:10px;justify-content:center">
-      <div style="text-align:center;background:#18182A;border-radius:4px;padding:6px 12px">
-        <div style="font-size:16px;font-weight:700;color:#e3b341">${o.qty.toLocaleString()}</div>
-        <div style="font-size:8px;color:#45455E">STOCK TOTAL</div>
+      <div style="text-align:center;background:#F5F5F5;border-radius:4px;padding:6px 12px">
+        <div style="font-size:16px;font-weight:700;color:#F5A623">${o.qty.toLocaleString()}</div>
+        <div style="font-size:8px;color:#999999">STOCK TOTAL</div>
       </div>
-      <div style="text-align:center;background:#18182A;border-radius:4px;padding:6px 12px">
-        <div style="font-size:16px;font-weight:700;color:#FFE600">${o.locs_n}</div>
-        <div style="font-size:8px;color:#45455E">UBICACIONES</div>
+      <div style="text-align:center;background:#F5F5F5;border-radius:4px;padding:6px 12px">
+        <div style="font-size:16px;font-weight:700;color:#3483FA">${o.locs_n}</div>
+        <div style="font-size:8px;color:#999999">UBICACIONES</div>
       </div>
     </div>
-    <div style="font-size:9px;color:#45455E;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Ubicaciones</div>
+    <div style="font-size:9px;color:#999999;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Ubicaciones</div>
     ${locsHtml}
   `;
 }
@@ -1372,7 +1376,7 @@ function renderSinMovimiento(){
   const kpi=document.getElementById('sinmov-kpi');
   if(!el) return;
   if(!Object.keys(SINMOV).length){
-    el.innerHTML='<div style="color:#45455E;font-size:10px;padding:8px">Sin datos — corre fetch_sin_movimiento.py</div>';
+    el.innerHTML='<div style="color:#999999;font-size:10px;padding:8px">Sin datos — corre fetch_sin_movimiento.py</div>';
     return;
   }
   // Construir lista: un entry por (address, sku) con dias≥30
@@ -1385,18 +1389,18 @@ function renderSinMovimiento(){
   items.sort((a,b)=>b.dias-a.dias);
   if(kpi) kpi.textContent=`${items.length.toLocaleString()} SKUs en alerta`;
   if(!items.length){
-    el.innerHTML='<div style="color:#3fb950;font-size:10px;padding:8px">✓ Sin stock varado — todo se movió en los últimos 30 días</div>';
+    el.innerHTML='<div style="color:#00A650;font-size:10px;padding:8px">✓ Sin stock varado — todo se movió en los últimos 30 días</div>';
     return;
   }
   const top=items.slice(0,30);
   const rows=top.map(it=>{
     const cat=CATALOG[it.sku];
-    const titulo=cat?.title?`<span style="color:#E0E0EE">${cat.title.substring(0,40)}${cat.title.length>40?'…':''}</span>`:'';
-    const diasCol=it.dias>=60?'#f85149':it.dias>=45?'#d07030':'#e3b341';
-    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 6px;background:#101018;border-radius:4px;margin-bottom:3px;border-left:3px solid ${diasCol}">
+    const titulo=cat?.title?`<span style="color:#333333">${cat.title.substring(0,40)}${cat.title.length>40?'…':''}</span>`:'';
+    const diasCol=it.dias>=60?'#F23D4F':it.dias>=45?'#d07030':'#F5A623';
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 6px;background:#FFFFFF;border-radius:4px;margin-bottom:3px;border-left:3px solid ${diasCol}">
       <span style="font-size:11px;font-weight:700;color:${diasCol};min-width:32px">${it.dias}d</span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:8px;font-family:monospace;color:#FFE60088;margin-bottom:1px">${it.addr}</div>
+        <div style="font-size:8px;font-family:monospace;color:#3483FA88;margin-bottom:1px">${it.addr}</div>
         <div style="font-size:8px;display:flex;gap:4px;align-items:center">
           <span class="sku-chip">${it.sku}</span>${titulo}
         </div>
@@ -1421,7 +1425,7 @@ function renderColaPendiente(){
   });
 
   if(!pending.length){
-    el.innerHTML='<div style="color:#3fb950;font-size:11px;padding:16px;text-align:center">Sin movables pendientes de putaway</div>';
+    el.innerHTML='<div style="color:#00A650;font-size:11px;padding:16px;text-align:center">Sin movables pendientes de putaway</div>';
     return;
   }
 
@@ -1430,39 +1434,39 @@ function renderColaPendiente(){
   const warn=pending.filter(g=>g.sla==='warn').length;
   const nt=pending.filter(g=>g.is_nt).length;
 
-  el.innerHTML=`<div style="display:flex;gap:10px;font-size:9px;color:#45455E;margin-bottom:8px;flex-wrap:wrap">
+  el.innerHTML=`<div style="display:flex;gap:10px;font-size:9px;color:#999999;margin-bottom:8px;flex-wrap:wrap">
     <span>${total} movables</span>
-    <span style="color:#f85149">🔴 ${over} vencidos</span>
-    <span style="color:#e3b341">⚠️ ${warn} en riesgo</span>
-    <span style="color:#FFE600">NT ${nt}</span>
+    <span style="color:#F23D4F">🔴 ${over} vencidos</span>
+    <span style="color:#F5A623">⚠️ ${warn} en riesgo</span>
+    <span style="color:#3483FA">NT ${nt}</span>
   </div>`+
   pending.slice(0,60).map(g=>{
-    const urgBorder=g.sla==='over'?'#f85149':g.sla==='warn'?'#e3b341':g.is_nt?'#B8A800':'#18182A';
-    const slaCol=g.sla==='over'?'#f85149':g.sla==='warn'?'#e3b341':'#3fb950';
+    const urgBorder=g.sla==='over'?'#F23D4F':g.sla==='warn'?'#F5A623':g.is_nt?'#2968C8':'#F5F5F5';
+    const slaCol=g.sla==='over'?'#F23D4F':g.sla==='warn'?'#F5A623':'#00A650';
     const slaTxt=g.sla==='over'?`🔴 Vencido ${fmtHoras(g.mins_restantes!=null?Math.abs(g.mins_restantes):null)}`
                 :g.sla==='warn'?`⚠️ ${fmtHoras(g.mins_restantes)} restantes`
                 :g.mins_restantes!=null?`🟢 ${fmtHoras(g.mins_restantes)} restantes`:'Sin SLA';
     const wmsUrl=g.is_id?`https://wms.adminml.com/reports/totes?inbound_id=${g.is_id}&resource=PUT_AWAY`:'';
-    return `<div style="border:1px solid ${urgBorder};border-radius:6px;padding:8px 10px;margin-bottom:5px;background:#101018;cursor:pointer" onclick="pwFilterMovable('${g.movable}');switchTab('chk')">
+    return `<div style="border:1px solid ${urgBorder};border-radius:6px;padding:8px 10px;margin-bottom:5px;background:#FFFFFF;cursor:pointer" onclick="pwFilterMovable('${g.movable}');switchTab('chk')">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        ${g.is_nt?`<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:#1C1900;color:#FFE600;border:1px solid #B8A800;font-weight:700">NT</span>`:''}
-        ${g.pw_status==='WAITING_FINISH'?`<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:#1a3a1a;color:#3fb950;border:1px solid #238636">EN PROCESO</span>`:''}
+        ${g.is_nt?`<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:#EBF2FF;color:#3483FA;border:1px solid #2968C8;font-weight:700">NT</span>`:''}
+        ${g.pw_status==='WAITING_FINISH'?`<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:#E6F7EE;color:#00A650;border:1px solid #238636">EN PROCESO</span>`:''}
         <span style="font-family:monospace;font-size:10px;color:#FFFFFF;font-weight:700;flex:1">${g.movable}</span>
         <span style="font-size:9px;color:${slaCol};font-weight:700">${slaTxt}</span>
       </div>
-      <div style="display:flex;gap:12px;font-size:9px;color:#45455E;flex-wrap:wrap">
-        <span>IS <b style="color:#e3b341">${g.is_id||'—'}</b></span>
+      <div style="display:flex;gap:12px;font-size:9px;color:#999999;flex-wrap:wrap">
+        <span>IS <b style="color:#F5A623">${g.is_id||'—'}</b></span>
         <span>${g.shipment_type||'—'}</span>
-        <span><b style="color:#E0E0EE">${g.sku_count||0}</b> SKUs</span>
-        <span><b style="color:#E0E0EE">${g.qty_checkin||0}</b> u</span>
-        <span style="color:#7878A0">${g.seller||'—'}</span>
-        ${wmsUrl?`<a href="${wmsUrl}" target="_blank" onclick="event.stopPropagation()" style="color:#FFE600;text-decoration:none;margin-left:auto">WMS ↗</a>`:''}
+        <span><b style="color:#333333">${g.sku_count||0}</b> SKUs</span>
+        <span><b style="color:#333333">${g.qty_checkin||0}</b> u</span>
+        <span style="color:#666666">${g.seller||'—'}</span>
+        ${wmsUrl?`<a href="${wmsUrl}" target="_blank" onclick="event.stopPropagation()" style="color:#3483FA;text-decoration:none;margin-left:auto">WMS ↗</a>`:''}
       </div>
     </div>`;
   }).join('');
 
   if(total>60){
-    el.innerHTML+=`<div style="text-align:center;color:#45455E;font-size:9px;padding:8px">Mostrando 60 de ${total} movables</div>`;
+    el.innerHTML+=`<div style="text-align:center;color:#999999;font-size:9px;padding:8px">Mostrando 60 de ${total} movables</div>`;
   }
 }
 
@@ -1492,12 +1496,12 @@ function buildPendingSKUs(){
 
 function renderSKUList(list){
   const el=document.getElementById('sug-sku-items');
-  if(!list.length){el.innerHTML='<div style="padding:12px;color:#45455E;font-size:10px">Sin resultados</div>';return;}
+  if(!list.length){el.innerHTML='<div style="padding:12px;color:#999999;font-size:10px">Sin resultados</div>';return;}
 
   // Si la lista viene con campo sla, es lista de pendientes — usar vista SLA
   if(list[0] && list[0].sla!==undefined && list[0].locs===undefined){
     el.innerHTML=list.slice(0,200).map(o=>{
-      const slaCol=o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':o.sla==='pw_active'?'#FFE600':'#3fb950';
+      const slaCol=o.sla==='over'?'#F23D4F':o.sla==='warn'?'#F5A623':o.sla==='pw_active'?'#3483FA':'#00A650';
       const slaIcon=o.sla==='over'?'🔴':o.sla==='warn'?'⚠️':o.sla==='pw_active'?'📦':'🟢';
       const mins=o.mins_restantes;
       const slaTxt=o.sla==='over'?fmtHoras(mins!=null?Math.abs(mins):null)+' venc'
@@ -1506,7 +1510,7 @@ function renderSKUList(list){
       return `<div class="sug-sku-item${SUG_SEL===o.sku?' sel':''}" onclick="selSKU('${o.sku}')">
         <span class="sug-sku-inv" style="color:${slaCol}">${slaIcon} ${o.sku}</span>
         <span class="sug-sku-name" style="color:${slaCol};font-size:8px">${slaTxt}</span>
-        <span class="sug-sku-locs" style="color:#e3b341">${o.qty}</span>
+        <span class="sug-sku-locs" style="color:#F5A623">${o.qty}</span>
       </div>`;
     }).join('');
     return;
@@ -1570,15 +1574,15 @@ function buscarSugerencia(){
   const top=scored.slice(0,15);
 
   res.innerHTML=`
-    <div style="font-size:11px;color:#7878A0;margin-bottom:4px">
-      Sugerencias para <b style="color:#e3b341;font-family:monospace">${targetSKU}</b>
-      ${entry.title?`<span style="color:#E0E0EE"> — ${entry.title}</span>`:''}
+    <div style="font-size:11px;color:#666666;margin-bottom:4px">
+      Sugerencias para <b style="color:#F5A623;font-family:monospace">${targetSKU}</b>
+      ${entry.title?`<span style="color:#333333"> — ${entry.title}</span>`:''}
       <span style="float:right;font-size:9px">${top.length} mejores de ${scored.length}</span>
     </div>
     ${top.map((sl,i)=>`
     <div class="sug-result-card">
       <div class="sug-result-hdr">
-        <span style="color:#45455E;font-size:10px">${i+1}.</span>
+        <span style="color:#999999;font-size:10px">${i+1}.</span>
         <span class="sug-result-addr">${sl.id}</span>
         <span class="sug-result-zona">${sl.area}</span>
         <span class="sug-afinidad" title="Score: ${sl.score}">${sl.stars}</span>
@@ -1594,9 +1598,9 @@ function buscarSugerencia(){
         </div>
         <div class="sug-bar-wrap">
           <div class="sug-bar-lbl"><span>SKUs almacenados</span><span>${sl.num_skus}${sl.limite_skus!==null?' / '+sl.limite_skus:''}</span></div>
-          <div class="sug-bar"><div class="sug-bar-fill" style="width:${sl.limite_skus?Math.round(sl.num_skus/sl.limite_skus*100):0}%;background:#FFE600"></div></div>
+          <div class="sug-bar"><div class="sug-bar-fill" style="width:${sl.limite_skus?Math.round(sl.num_skus/sl.limite_skus*100):0}%;background:#3483FA"></div></div>
         </div>
-        ${sl.skus.length?`<div style="font-size:9px;color:#45455E">SKUs actuales: ${sl.skus.slice(0,3).map(s=>`<span style="font-family:monospace;color:#FFE60044">${s}</span>`).join(', ')}${sl.skus.length>3?` +${sl.skus.length-3} más`:''}</div>`:'<div style="font-size:9px;color:#45455E">Ubicación vacía</div>'}
+        ${sl.skus.length?`<div style="font-size:9px;color:#999999">SKUs actuales: ${sl.skus.slice(0,3).map(s=>`<span style="font-family:monospace;color:#3483FA44">${s}</span>`).join(', ')}${sl.skus.length>3?` +${sl.skus.length-3} más`:''}</div>`:'<div style="font-size:9px;color:#999999">Ubicación vacía</div>'}
       </div>
     </div>`).join('')}
   `;
@@ -1683,47 +1687,47 @@ function renderPutawaySLA(){
 
   function slaBtn(val, label, col){
     const active=PW_SLA_FILTER===val;
-    return `<button onclick="pwSetSLA('${val}')" style="font-size:8px;padding:2px 6px;border-radius:10px;border:1px solid ${active?col:'#252540'};background:${active?col+'22':'transparent'};color:${active?col:'#7878A0'};cursor:pointer;white-space:nowrap">${label}</button>`;
+    return `<button onclick="pwSetSLA('${val}')" style="font-size:8px;padding:2px 6px;border-radius:10px;border:1px solid ${active?col:'#D9D9D9'};background:${active?col+'22':'transparent'};color:${active?col:'#666666'};cursor:pointer;white-space:nowrap">${label}</button>`;
   }
 
   hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
-    <span style="color:#e3b341;font-weight:700">📦 Putaway por Guardar</span>
-    <span style="font-size:8px;color:#45455E">${src.length} movables · ${src.reduce((s,g)=>s+(g.sku_count||0),0)} SKUs</span>
+    <span style="color:#F5A623;font-weight:700">📦 Putaway por Guardar</span>
+    <span style="font-size:8px;color:#999999">${src.length} movables · ${src.reduce((s,g)=>s+(g.sku_count||0),0)} SKUs</span>
   </div>
-  ${PW_UPDATED?`<div style="font-size:8px;color:#45455E;margin-top:2px">Ultima actualizacion: <b style="color:#7878A0">${PW_UPDATED}</b></div>`:''}
+  ${PW_UPDATED?`<div style="font-size:8px;color:#999999;margin-top:2px">Ultima actualizacion: <b style="color:#666666">${PW_UPDATED}</b></div>`:''}
 
   <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-    ${slaBtn('all','Todos','#7878A0')}
-    ${slaBtn('over','🔴 '+over+' Vencidos','#f85149')}
-    ${slaBtn('warn','⚠️ '+warn+' En riesgo','#e3b341')}
-    ${slaBtn('ok','🟢 OK','#3fb950')}
-    ${slaBtn('nt','NT '+ntCount,'#FFE600')}
+    ${slaBtn('all','Todos','#666666')}
+    ${slaBtn('over','🔴 '+over+' Vencidos','#F23D4F')}
+    ${slaBtn('warn','⚠️ '+warn+' En riesgo','#F5A623')}
+    ${slaBtn('ok','🟢 OK','#00A650')}
+    ${slaBtn('nt','NT '+ntCount,'#3483FA')}
   </div>
-  <div style="font-size:8px;color:#45455E;margin-top:4px">${groups.length} mostrando · ${totalSkus} SKUs · ${active} en proceso
-    ${PW_MOVABLE_FILTER?` · <button onclick="pwClearFilter()" style="font-size:8px;padding:1px 5px;border-radius:6px;background:#252540;color:#E0E0EE;border:none;cursor:pointer">✕ Limpiar</button>`:''}
+  <div style="font-size:8px;color:#999999;margin-top:4px">${groups.length} mostrando · ${totalSkus} SKUs · ${active} en proceso
+    ${PW_MOVABLE_FILTER?` · <button onclick="pwClearFilter()" style="font-size:8px;padding:1px 5px;border-radius:6px;background:#D9D9D9;color:#333333;border:none;cursor:pointer">✕ Limpiar</button>`:''}
   </div>
   <div style="display:flex;gap:4px;margin-top:6px">
-    <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='movable'?'#FFE600':'#252540'};background:${PW_VIEW==='movable'?'#1C1900':'transparent'};color:${PW_VIEW==='movable'?'#FFE600':'#7878A0'};cursor:pointer">Por Movable</button>
-    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#FFE600':'#252540'};background:${PW_VIEW==='is'?'#1C1900':'transparent'};color:${PW_VIEW==='is'?'#FFE600':'#7878A0'};cursor:pointer">Por IS</button>
-    <button onclick="pwToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #252540;background:transparent;color:#7878A0;cursor:pointer">${PW_SORT==='asc'?'↑ Mayor':'↓ Menor'}</button>
+    <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='movable'?'#3483FA':'#D9D9D9'};background:${PW_VIEW==='movable'?'#EBF2FF':'transparent'};color:${PW_VIEW==='movable'?'#3483FA':'#666666'};cursor:pointer">Por Movable</button>
+    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#3483FA':'#D9D9D9'};background:${PW_VIEW==='is'?'#EBF2FF':'transparent'};color:${PW_VIEW==='is'?'#3483FA':'#666666'};cursor:pointer">Por IS</button>
+    <button onclick="pwToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #D9D9D9;background:transparent;color:#666666;cursor:pointer">${PW_SORT==='asc'?'↑ Mayor':'↓ Menor'}</button>
   </div>`;
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
-  function slaColor(sla){return sla==='over'?'#f85149':sla==='warn'?'#e3b341':sla==='pw_active'?'#FFE600':'#3fb950';}
+  function slaColor(sla){return sla==='over'?'#F23D4F':sla==='warn'?'#F5A623':sla==='pw_active'?'#3483FA':'#00A650';}
   function slaIcon(sla){return sla==='over'?'🔴':sla==='warn'?'⚠️':sla==='pw_active'?'📦':'🟢';}
 
   // Calcula bucket de vencimiento por hora para separadores
   function expiryBucket(minRestantes){
-    if(minRestantes==null) return {key:'z_sin_sla',label:'Sin SLA',col:'#45455E',icon:'—'};
-    if(minRestantes<0) return {key:'a_retrasado',label:'Retrasado',col:'#f85149',icon:'🔴'};
+    if(minRestantes==null) return {key:'z_sin_sla',label:'Sin SLA',col:'#999999',icon:'—'};
+    if(minRestantes<0) return {key:'a_retrasado',label:'Retrasado',col:'#F23D4F',icon:'🔴'};
     const exp=new Date(Date.now()+minRestantes*60000);
     const h=exp.getHours();
     const hh=String(h).padStart(2,'0');
     const isToday=exp.toDateString()===new Date().toDateString();
     const dayStr=isToday?'Hoy':'Mañana';
     const key=`b_${exp.toDateString()}_${hh}`;
-    const col=minRestantes<1440?'#e3b341':'#3fb950';
+    const col=minRestantes<1440?'#F5A623':'#00A650';
     const icon=minRestantes<1440?'⚠️':'🟢';
     return {key,label:`${dayStr} ${hh}:00`,col,icon};
   }
@@ -1731,36 +1735,36 @@ function renderPutawaySLA(){
   function mkMovableCard(g){
     const col=slaColor(g.sla);
     const isNT=g.is_nt;
-    const ntBadge=isNT?`<span style="padding:1px 5px;border-radius:6px;background:#1C1900;color:#FFE600;font-size:8px;border:1px solid #B8A800;font-weight:700">NT</span>`:'';
+    const ntBadge=isNT?`<span style="padding:1px 5px;border-radius:6px;background:#EBF2FF;color:#3483FA;font-size:8px;border:1px solid #2968C8;font-weight:700">NT</span>`:'';
     const restTxt=g.mins_restantes!=null
       ?(g.mins_restantes<0
-        ?`<span style="color:#f85149;font-weight:700">vencido ${fmtHoras(Math.abs(g.mins_restantes))}</span>`
+        ?`<span style="color:#F23D4F;font-weight:700">vencido ${fmtHoras(Math.abs(g.mins_restantes))}</span>`
         :`<span style="color:${col}">${fmtHoras(g.mins_restantes)} restantes</span>`)
       :'';
     const isActive=PW_MOVABLE_FILTER===g.movable;
     const tipo=g.shipment_type==='ftl'?'FTL':g.shipment_type==='pickup'?'Colecta':g.shipment_type==='supplier'?'Proveedor':(g.shipment_type||'');
     const inProceso=g.pw_status==='WAITING_FINISH';
-    return `<div onclick="pwFilterMovable('${g.movable}')" style="padding:8px 10px;border-bottom:1px solid #18182A;cursor:pointer;
-      border-left:3px solid ${isNT?'#FFE600':col};background:${isActive?'#18182A':'transparent'};transition:background .1s"
-      onmouseover="this.style.background='#18182A'" onmouseout="this.style.background='${isActive?'#18182A':'transparent'}'">
+    return `<div onclick="pwFilterMovable('${g.movable}')" style="padding:8px 10px;border-bottom:1px solid #F5F5F5;cursor:pointer;
+      border-left:3px solid ${isNT?'#3483FA':col};background:${isActive?'#F5F5F5':'transparent'};transition:background .1s"
+      onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background='${isActive?'#F5F5F5':'transparent'}'">
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
         ${ntBadge}
-        ${inProceso?`<span style="font-size:7px;padding:1px 4px;border-radius:4px;background:#1a3a1a;color:#3fb950;border:1px solid #3fb950">EN PROCESO</span>`:''}
+        ${inProceso?`<span style="font-size:7px;padding:1px 4px;border-radius:4px;background:#E6F7EE;color:#00A650;border:1px solid #00A650">EN PROCESO</span>`:''}
         <span style="font-family:monospace;font-size:10px;color:#FFFFFF;font-weight:700">${g.movable}</span>
-        ${tipo?`<span style="margin-left:auto;font-size:8px;color:#45455E;background:#18182A;padding:1px 4px;border-radius:3px">${tipo}</span>`:''}
+        ${tipo?`<span style="margin-left:auto;font-size:8px;color:#999999;background:#F5F5F5;padding:1px 4px;border-radius:3px">${tipo}</span>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        <span style="font-size:9px;color:#45455E">IS</span>
-        <span style="font-family:monospace;font-size:10px;color:#e3b341;font-weight:700">${g.is_id||'—'}</span>
-        <span style="color:#E0E0EE;font-size:9px;font-weight:700;margin-left:auto">${g.qty_checkin||0} u</span>
-        <span style="color:#45455E;font-size:9px">${g.sku_count||0} SKUs</span>
+        <span style="font-size:9px;color:#999999">IS</span>
+        <span style="font-family:monospace;font-size:10px;color:#F5A623;font-weight:700">${g.is_id||'—'}</span>
+        <span style="color:#333333;font-size:9px;font-weight:700;margin-left:auto">${g.qty_checkin||0} u</span>
+        <span style="color:#999999;font-size:9px">${g.sku_count||0} SKUs</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
-        <span style="font-size:8px;color:#45455E">⏱ En proceso: <b style="color:#7878A0">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</b></span>
-        ${g.appointment?`<span style="font-size:8px;color:#45455E;margin-left:auto">Appt: <b style="color:#7878A0">${g.appointment.slice(5,16)}</b></span>`:''}
+        <span style="font-size:8px;color:#999999">⏱ En proceso: <b style="color:#666666">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</b></span>
+        ${g.appointment?`<span style="font-size:8px;color:#999999;margin-left:auto">Appt: <b style="color:#666666">${g.appointment.slice(5,16)}</b></span>`:''}
       </div>
       ${restTxt?`<div style="font-size:9px;font-weight:700;margin-bottom:3px">${restTxt}</div>`:''}
-      ${g.seller?`<div style="font-size:8px;color:#45455E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.seller}</div>`:''}
+      ${g.seller?`<div style="font-size:8px;color:#999999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.seller}</div>`:''}
     </div>`;
   }
 
@@ -1769,7 +1773,7 @@ function renderPutawaySLA(){
     :groups;
 
   if(!visGroups.length){
-    body.innerHTML=`<div style="color:#3fb950;font-size:11px;padding:20px;text-align:center">✓ Sin items pendientes</div>`;
+    body.innerHTML=`<div style="color:#00A650;font-size:11px;padding:20px;text-align:center">✓ Sin items pendientes</div>`;
     return;
   }
 
@@ -1783,10 +1787,10 @@ function renderPutawaySLA(){
       const bkGs=visGroups.filter(x=>expiryBucket(x.minRestantes).key===bk.key);
       const bkUnits=bkGs.reduce((s,x)=>s+(x.qty_checkin||0),0);
       const bkNT=bkGs.filter(x=>x.is_nt).length;
-      html+=`<div style="padding:5px 10px;background:#101018;border-bottom:1px solid #252540;position:sticky;top:0;z-index:2">
+      html+=`<div style="padding:5px 10px;background:#FFFFFF;border-bottom:1px solid #D9D9D9;position:sticky;top:0;z-index:2">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:10px;font-weight:700;color:${bk.col}">${bk.icon} ${bk.label}</span>
-          <span style="font-size:8px;color:#45455E;margin-left:auto">${bkGs.length} movables · ${bkUnits} u${bkNT?` · <span style="color:#FFE600">${bkNT} NT</span>`:''}</span>
+          <span style="font-size:8px;color:#999999;margin-left:auto">${bkGs.length} movables · ${bkUnits} u${bkNT?` · <span style="color:#3483FA">${bkNT} NT</span>`:''}</span>
         </div>
       </div>`;
     }
@@ -1813,13 +1817,13 @@ function pwFilterMovable(mv){
   const hdr=document.getElementById('chk-det-hdr');
   hdr.innerHTML=`
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      ${isNT?`<span style="padding:1px 5px;border-radius:6px;background:#1C1900;color:#FFE600;font-size:9px;border:1px solid #B8A800;font-weight:700">NT</span>`:''}
+      ${isNT?`<span style="padding:1px 5px;border-radius:6px;background:#EBF2FF;color:#3483FA;font-size:9px;border:1px solid #2968C8;font-weight:700">NT</span>`:''}
       <span style="font-family:monospace;font-size:11px;color:#FFFFFF;font-weight:700">${mv}</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-      <span style="font-size:9px;color:#45455E">IS</span>
-      <span style="font-family:monospace;font-size:12px;color:#e3b341;font-weight:700">${isId||'—'}</span>
-      <button onclick="pwClearFilter()" style="margin-left:auto;font-size:8px;padding:2px 7px;border-radius:8px;background:#252540;color:#E0E0EE;border:none;cursor:pointer">✕ Volver</button>
+      <span style="font-size:9px;color:#999999">IS</span>
+      <span style="font-family:monospace;font-size:12px;color:#F5A623;font-weight:700">${isId||'—'}</span>
+      <button onclick="pwClearFilter()" style="margin-left:auto;font-size:8px;padding:2px 7px;border-radius:8px;background:#D9D9D9;color:#333333;border:none;cursor:pointer">✕ Volver</button>
     </div>`;
   chkRenderMovable();
   renderPutawaySLA();
@@ -1886,18 +1890,18 @@ function renderInboundIS(){
   });
 
   if(!list.length){
-    body.innerHTML=`<div style="color:#45455E;font-size:10px;padding:20px;text-align:center">Sin IS pendientes de putaway</div>`;
+    body.innerHTML=`<div style="color:#999999;font-size:10px;padding:20px;text-align:center">Sin IS pendientes de putaway</div>`;
     return;
   }
 
   function fmtTipo(t){return t==='ftl'?'FTL':t==='pickup'?'Colecta':t==='supplier'?'Proveedor':(t||'—');}
   function expiryLabel(mins){
-    if(mins==null) return {key:'z',label:'Sin fecha',col:'#45455E',ico:'—'};
-    if(mins<0) return {key:'a_ret',label:'Retrasado',col:'#f85149',ico:'🔴'};
+    if(mins==null) return {key:'z',label:'Sin fecha',col:'#999999',ico:'—'};
+    if(mins<0) return {key:'a_ret',label:'Retrasado',col:'#F23D4F',ico:'🔴'};
     const exp=new Date(Date.now()+mins*60000);
     const h=String(exp.getHours()).padStart(2,'0');
     const isToday=exp.toDateString()===new Date().toDateString();
-    return {key:`b_${exp.toDateString()}_${h}`,label:`${isToday?'Hoy':'Mañana'} ${h}:00`,col:mins<1440?'#e3b341':'#3fb950',ico:mins<1440?'⚠️':'🟢'};
+    return {key:`b_${exp.toDateString()}_${h}`,label:`${isToday?'Hoy':'Mañana'} ${h}:00`,col:mins<1440?'#F5A623':'#00A650',ico:mins<1440?'⚠️':'🟢'};
   }
 
   // Actualizar header con totales
@@ -1905,16 +1909,16 @@ function renderInboundIS(){
   const totalTB=list.reduce((s,x)=>s+x.tb_units,0);
   const hdr=document.getElementById('chk-det-hdr');
   hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
-    <span style="color:#e3b341;font-weight:700">📦 Putaway Pendiente por IS</span>
-    <span style="font-size:8px;color:#45455E">${list.length} IS · ${pendItems.length} SKUs</span>
+    <span style="color:#F5A623;font-weight:700">📦 Putaway Pendiente por IS</span>
+    <span style="font-size:8px;color:#999999">${list.length} IS · ${pendItems.length} SKUs</span>
   </div>
   <div style="display:flex;gap:6px;margin-top:6px;font-size:9px;flex-wrap:wrap">
-    <span style="color:#FFE600">NT ${totalNTB} u</span>
-    <span style="color:#45455E">TB ${totalTB} u</span>
+    <span style="color:#3483FA">NT ${totalNTB} u</span>
+    <span style="color:#999999">TB ${totalTB} u</span>
   </div>
   <div style="display:flex;gap:4px;margin-top:8px">
-    <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid #252540;background:transparent;color:#7878A0;cursor:pointer">Por Movable</button>
-    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid #FFE600;background:#1C1900;color:#FFE600;cursor:pointer">Por IS</button>
+    <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid #D9D9D9;background:transparent;color:#666666;cursor:pointer">Por Movable</button>
+    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid #3483FA;background:#EBF2FF;color:#3483FA;cursor:pointer">Por IS</button>
   </div>`;
 
   let html='', lastKey='';
@@ -1924,31 +1928,31 @@ function renderInboundIS(){
       lastKey=bk.key;
       const grp=list.filter(x=>expiryLabel(x.mins_restantes).key===bk.key);
       const gNTB=grp.reduce((s,x)=>s+x.ntb_units,0);
-      html+=`<div style="padding:5px 10px;background:#101018;border-bottom:1px solid #252540;position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:6px">
+      html+=`<div style="padding:5px 10px;background:#FFFFFF;border-bottom:1px solid #D9D9D9;position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:6px">
         <span style="font-size:10px;font-weight:700;color:${bk.col}">${bk.ico} ${bk.label}</span>
-        <span style="font-size:8px;color:#45455E;margin-left:auto">${grp.length} IS${gNTB?` · <span style="color:#FFE600">${gNTB} u NT</span>`:''}</span>
+        <span style="font-size:8px;color:#999999;margin-left:auto">${grp.length} IS${gNTB?` · <span style="color:#3483FA">${gNTB} u NT</span>`:''}</span>
       </div>`;
     }
     const isNT=is.ntb_units>0;
     const appt=is.appointment?is.appointment.slice(5,16):'—';
     const arr=is.arrival?is.arrival.slice(5,16):'—';
     const tipo=fmtTipo(is.shipment_type);
-    html+=`<div style="padding:8px 10px;border-bottom:1px solid #18182A;border-left:3px solid ${isNT?'#FFE600':'#252540'}">
+    html+=`<div style="padding:8px 10px;border-bottom:1px solid #F5F5F5;border-left:3px solid ${isNT?'#3483FA':'#D9D9D9'}">
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        ${isNT?`<span style="padding:1px 5px;border-radius:6px;background:#1C1900;color:#FFE600;font-size:8px;border:1px solid #B8A800;font-weight:700">NT</span>`:''}
-        <span style="font-size:9px;color:#45455E">IS</span>
-        <span style="font-family:monospace;font-size:11px;color:#e3b341;font-weight:700">${is.is_id}</span>
-        ${tipo?`<span style="margin-left:auto;font-size:8px;color:#45455E;background:#18182A;padding:1px 5px;border-radius:4px">${tipo}</span>`:''}
+        ${isNT?`<span style="padding:1px 5px;border-radius:6px;background:#EBF2FF;color:#3483FA;font-size:8px;border:1px solid #2968C8;font-weight:700">NT</span>`:''}
+        <span style="font-size:9px;color:#999999">IS</span>
+        <span style="font-family:monospace;font-size:11px;color:#F5A623;font-weight:700">${is.is_id}</span>
+        ${tipo?`<span style="margin-left:auto;font-size:8px;color:#999999;background:#F5F5F5;padding:1px 5px;border-radius:4px">${tipo}</span>`:''}
       </div>
       <div style="display:flex;gap:8px;font-size:9px;margin-bottom:3px;flex-wrap:wrap">
-        ${isNT?`<span style="color:#FFE600;font-weight:700">${is.ntb_units} u NT</span>`:''}
-        ${is.tb_units?`<span style="color:#7878A0">${is.tb_units} u TB</span>`:''}
-        <span style="color:#45455E">${is.skus} SKUs pend.</span>
-        <span style="color:#45455E;margin-left:auto">${is.qty_chk} u checkin</span>
+        ${isNT?`<span style="color:#3483FA;font-weight:700">${is.ntb_units} u NT</span>`:''}
+        ${is.tb_units?`<span style="color:#666666">${is.tb_units} u TB</span>`:''}
+        <span style="color:#999999">${is.skus} SKUs pend.</span>
+        <span style="color:#999999;margin-left:auto">${is.qty_chk} u checkin</span>
       </div>
-      ${(appt!=='—'||arr!=='—')?`<div style="display:flex;gap:10px;font-size:8px;color:#45455E">
-        ${appt!=='—'?`<span>📅 <span style="color:#7878A0">${appt}</span></span>`:''}
-        ${arr!=='—'?`<span>🛬 <span style="color:#7878A0">${arr}</span></span>`:''}
+      ${(appt!=='—'||arr!=='—')?`<div style="display:flex;gap:10px;font-size:8px;color:#999999">
+        ${appt!=='—'?`<span>📅 <span style="color:#666666">${appt}</span></span>`:''}
+        ${arr!=='—'?`<span>🛬 <span style="color:#666666">${arr}</span></span>`:''}
       </div>`:''}
     </div>`;
   });
@@ -1972,14 +1976,14 @@ function chkRenderMovable(){
       const shortTitle=title.length>28?title.slice(0,28)+'…':title;
       return `<tr onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
         <td>${chkSlaLabel(o)}</td>
-        <td><span style="font-family:monospace;font-size:10px;color:#FFE600">${o.sku}</span></td>
-        <td><span style="color:#E0E0EE;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
-        <td style="font-weight:700;color:#e3b341;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
-        <td style="font-size:9px;color:#7878A0;white-space:nowrap">${o.chk_ts||'—'}</td>
-        <td style="font-size:9px;color:#7878A0;white-space:nowrap">${fmtHoras(o.mins_since_chk)}</td>
-        <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?(o.movable.includes('NT')?'#FFE600':'#3fb950'):'#45455E'}">${o.movable||'—'}</span></td>
-        <td style="font-size:9px;color:#7878A0">${o.seller||'—'}</td>
-        <td style="font-size:9px;color:#45455E;font-family:monospace">${o.is_id||'—'}</td>
+        <td><span style="font-family:monospace;font-size:10px;color:#3483FA">${o.sku}</span></td>
+        <td><span style="color:#333333;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
+        <td style="font-weight:700;color:#F5A623;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
+        <td style="font-size:9px;color:#666666;white-space:nowrap">${o.chk_ts||'—'}</td>
+        <td style="font-size:9px;color:#666666;white-space:nowrap">${fmtHoras(o.mins_since_chk)}</td>
+        <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?(o.movable.includes('NT')?'#3483FA':'#00A650'):'#999999'}">${o.movable||'—'}</span></td>
+        <td style="font-size:9px;color:#666666">${o.seller||'—'}</td>
+        <td style="font-size:9px;color:#999999;font-family:monospace">${o.is_id||'—'}</td>
       </tr>`;
     }).join('');
     return;
@@ -1987,25 +1991,25 @@ function chkRenderMovable(){
 
   // Sin datos en CHK_DATA — mostrar tarjeta resumen desde PW_DATA
   const pw=PW_DATA.find(g=>g.movable===mv)||{};
-  const slaCol=pw.sla==='over'?'#f85149':pw.sla==='warn'?'#e3b341':'#3fb950';
+  const slaCol=pw.sla==='over'?'#F23D4F':pw.sla==='warn'?'#F5A623':'#00A650';
   const slaTxt=pw.sla==='over'?`🔴 Vencido ${fmtHoras(pw.mins_restantes!=null?Math.abs(pw.mins_restantes):null)}`
               :pw.sla==='warn'?`⚠️ ${fmtHoras(pw.mins_restantes)} restantes`
               :pw.mins_restantes!=null?`🟢 ${fmtHoras(pw.mins_restantes)} restantes`:'—';
   const wmsUrl=isId?`https://wms.adminml.com/reports/totes?inbound_id=${isId}&resource=PUT_AWAY`:'';
   tbody.innerHTML=`<tr><td colspan="9" style="padding:16px">
-    <div style="background:#101018;border:1px solid #252540;border-radius:8px;padding:14px;max-width:480px;margin:0 auto">
-      <div style="font-size:9px;color:#45455E;margin-bottom:8px">Datos desde BT_FBM_PUTAWAY</div>
+    <div style="background:#FFFFFF;border:1px solid #D9D9D9;border-radius:8px;padding:14px;max-width:480px;margin:0 auto">
+      <div style="font-size:9px;color:#999999;margin-bottom:8px">Datos desde BT_FBM_PUTAWAY</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px">
-        <div><span style="color:#45455E">Tipo</span><br><b style="color:#E0E0EE">${pw.shipment_type||'—'}</b></div>
-        <div><span style="color:#45455E">Seller</span><br><b style="color:#E0E0EE">${pw.seller||'—'}</b></div>
-        <div><span style="color:#45455E">SKUs</span><br><b style="color:#e3b341">${pw.sku_count||'—'}</b></div>
-        <div><span style="color:#45455E">Unidades</span><br><b style="color:#e3b341">${pw.qty_checkin||'—'}</b></div>
-        <div><span style="color:#45455E">Usuario</span><br><b style="color:#7878A0">${pw.usuario||'—'}</b></div>
-        <div><span style="color:#45455E">Creado</span><br><b style="color:#7878A0">${pw.pw_created||'—'}</b></div>
-        <div><span style="color:#45455E">Espera</span><br><b style="color:#7878A0">${fmtHoras(pw.mins_since_chk)}</b></div>
-        <div><span style="color:#45455E">SLA</span><br><b style="color:${slaCol}">${slaTxt}</b></div>
+        <div><span style="color:#999999">Tipo</span><br><b style="color:#333333">${pw.shipment_type||'—'}</b></div>
+        <div><span style="color:#999999">Seller</span><br><b style="color:#333333">${pw.seller||'—'}</b></div>
+        <div><span style="color:#999999">SKUs</span><br><b style="color:#F5A623">${pw.sku_count||'—'}</b></div>
+        <div><span style="color:#999999">Unidades</span><br><b style="color:#F5A623">${pw.qty_checkin||'—'}</b></div>
+        <div><span style="color:#999999">Usuario</span><br><b style="color:#666666">${pw.usuario||'—'}</b></div>
+        <div><span style="color:#999999">Creado</span><br><b style="color:#666666">${pw.pw_created||'—'}</b></div>
+        <div><span style="color:#999999">Espera</span><br><b style="color:#666666">${fmtHoras(pw.mins_since_chk)}</b></div>
+        <div><span style="color:#999999">SLA</span><br><b style="color:${slaCol}">${slaTxt}</b></div>
       </div>
-      ${wmsUrl?`<a href="${wmsUrl}" target="_blank" style="display:block;margin-top:12px;text-align:center;font-size:9px;padding:5px;border-radius:6px;background:#1f2937;color:#FFE600;text-decoration:none;border:1px solid #B8A800">🔗 Ver IS ${isId} en WMS</a>`:''}
+      ${wmsUrl?`<a href="${wmsUrl}" target="_blank" style="display:block;margin-top:12px;text-align:center;font-size:9px;padding:5px;border-radius:6px;background:#F5F5F5;color:#3483FA;text-decoration:none;border:1px solid #2968C8">🔗 Ver IS ${isId} en WMS</a>`:''}
     </div>
   </td></tr>`;
 }
@@ -2080,19 +2084,19 @@ function chkRender(){
     const shortTitle=title.length>28?title.slice(0,28)+'…':title;
     return `<tr class="${CHK_SEL===o.sku+o.chk_ts?'chk-sel':''}" onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
       <td>${chkSlaLabel(o)}</td>
-      <td><span style="font-family:monospace;font-size:10px;color:${o.en_putaway?'#FFE600':'#FFE600'}">${o.sku}</span></td>
-      <td><span style="color:#E0E0EE;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
-      <td style="font-weight:700;color:#e3b341;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
-      <td style="font-size:9px;color:#7878A0;white-space:nowrap">${o.chk_ts||'—'}</td>
-      <td style="font-size:9px;color:#7878A0;white-space:nowrap">${o.pw_fin_ts||o.pw_inicio_ts||'—'}</td>
-      <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?((o.is_nt||o.movable.includes('-NT-'))?'#FFE600':'#3fb950'):'#45455E'}">${o.movable||'—'}</span></td>
-      <td style="font-size:9px;color:#7878A0">${o.seller||'—'}</td>
-      <td style="font-size:9px;color:#45455E;font-family:monospace">${o.inbound_id||'—'}</td>
+      <td><span style="font-family:monospace;font-size:10px;color:${o.en_putaway?'#3483FA':'#3483FA'}">${o.sku}</span></td>
+      <td><span style="color:#333333;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
+      <td style="font-weight:700;color:#F5A623;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
+      <td style="font-size:9px;color:#666666;white-space:nowrap">${o.chk_ts||'—'}</td>
+      <td style="font-size:9px;color:#666666;white-space:nowrap">${o.pw_fin_ts||o.pw_inicio_ts||'—'}</td>
+      <td><span style="font-size:9px;font-family:monospace;font-weight:700;color:${o.movable?((o.is_nt||o.movable.includes('-NT-'))?'#3483FA':'#00A650'):'#999999'}">${o.movable||'—'}</span></td>
+      <td style="font-size:9px;color:#666666">${o.seller||'—'}</td>
+      <td style="font-size:9px;color:#999999;font-family:monospace">${o.inbound_id||'—'}</td>
     </tr>`;
   }).join('');
   if(list.length>300){
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td colspan="10" style="text-align:center;padding:8px;color:#45455E;font-size:9px">Mostrando 300 de ${list.length} — refina la búsqueda</td>`;
+    tr.innerHTML=`<td colspan="10" style="text-align:center;padding:8px;color:#999999;font-size:9px">Mostrando 300 de ${list.length} — refina la búsqueda</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -2116,12 +2120,12 @@ function chkSelItem(o){
   const cat=CATALOG[o.sku]||{};
   const chkImgId=`img-chk-${(o.sku||'').replace(/[^a-z0-9]/gi,'_')}`;
   const imgHtml=cat.item_id
-    ?`<img id="${chkImgId}" src="" style="width:60px;height:60px;object-fit:contain;border-radius:4px;border:1px solid #252540;background:#08080E;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`
-    :(cat.img?`<img src="${cat.img}" style="width:60px;height:60px;object-fit:contain;border-radius:4px;border:1px solid #252540;background:#08080E;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`:'' );
+    ?`<img id="${chkImgId}" src="" style="width:60px;height:60px;object-fit:contain;border-radius:4px;border:1px solid #D9D9D9;background:#EBEBEB;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`
+    :(cat.img?`<img src="${cat.img}" style="width:60px;height:60px;object-fit:contain;border-radius:4px;border:1px solid #D9D9D9;background:#EBEBEB;display:block;margin:0 auto 8px" onerror="this.style.display='none'">`:'' );
   if(cat.item_id) setTimeout(()=>fetchMeliImg(cat.item_id, chkImgId), 100);
 
   // SLA visual
-  const slaColor = o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':o.sla==='done'?'#3fb950':'#3fb950';
+  const slaColor = o.sla==='over'?'#F23D4F':o.sla==='warn'?'#F5A623':o.sla==='done'?'#00A650':'#00A650';
   const slaTxt   = o.sla==='done'?`Completado en ${o.mins_to_pw!=null?o.mins_to_pw+'min':'?'}`
                   :o.sla==='over'?`⚠ Sobre SLA — ${o.mins_since_chk}min esperando`
                   :o.sla==='warn'?`Atención — ${o.mins_since_chk}min sin putaway`
@@ -2137,48 +2141,48 @@ function chkSelItem(o){
       return {...sl,score,tags,stars};
     }).sort((a,b)=>b.score-a.score).slice(0,5);
 
-    sugHtml=`<div style="font-size:9px;color:#45455E;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 6px">📍 Sugerencias de putaway</div>
+    sugHtml=`<div style="font-size:9px;color:#999999;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 6px">📍 Sugerencias de putaway</div>
     ${scored.map((sl,i)=>`
       <div class="chk-sug-card">
-        <div class="chk-sug-addr">${i+1}. ${sl.id} <span style="color:#e3b341;margin-left:4px">${sl.stars}</span></div>
+        <div class="chk-sug-addr">${i+1}. ${sl.id} <span style="color:#F5A623;margin-left:4px">${sl.stars}</span></div>
         <div class="chk-sug-meta">
           <span class="inv-area-tag inv-area-${(sl.area||'').toLowerCase()}">${sl.area}</span>
           ${sl.pct_vol!=null?`<span>Vol: <b style="color:${volColor(sl.pct_vol)}">${sl.pct_vol}%</b></span>`:''}
           <span>${sl.tags.map(t=>t.txt).join(' · ')}</span>
-          <span style="margin-left:auto;color:#e3b341;font-weight:700">${sl.score}pts</span>
+          <span style="margin-left:auto;color:#F5A623;font-weight:700">${sl.score}pts</span>
         </div>
       </div>`).join('')}`;
   } else if(o.estado && o.estado!=='pendiente'){
-    sugHtml=`<div style="font-size:9px;color:#3fb950;margin-top:8px">✓ Estado: <b>${o.estado}</b></div>`;
+    sugHtml=`<div style="font-size:9px;color:#00A650;margin-top:8px">✓ Estado: <b>${o.estado}</b></div>`;
   }
 
-  document.getElementById('chk-det-hdr').innerHTML=`<span style="color:#FFE600">${o.sku}</span> <span style="font-size:9px;color:#45455E">· Inbound ${o.inbound_id||'—'}</span>`;
+  document.getElementById('chk-det-hdr').innerHTML=`<span style="color:#3483FA">${o.sku}</span> <span style="font-size:9px;color:#999999">· Inbound ${o.inbound_id||'—'}</span>`;
   document.getElementById('chk-det-body').innerHTML=`
     ${imgHtml}
     <div style="text-align:center;margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;color:#E0E0EE">${cat.title||o.sku}</div>
-      ${cat.brand?`<div style="font-size:9px;color:#7878A0">${cat.brand}</div>`:''}
-      ${cat.ean?`<div style="font-size:9px;color:#45455E;font-family:monospace">EAN: ${cat.ean}</div>`:''}
+      <div style="font-size:11px;font-weight:700;color:#333333">${cat.title||o.sku}</div>
+      ${cat.brand?`<div style="font-size:9px;color:#666666">${cat.brand}</div>`:''}
+      ${cat.ean?`<div style="font-size:9px;color:#999999;font-family:monospace">EAN: ${cat.ean}</div>`:''}
     </div>
-    <div style="background:#18182A;border-radius:4px;padding:8px 10px;margin-bottom:8px;text-align:center">
+    <div style="background:#F5F5F5;border-radius:4px;padding:8px 10px;margin-bottom:8px;text-align:center">
       <div style="font-size:13px;font-weight:700;color:${slaColor}">${slaTxt}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:9px">
-      <div style="background:#101018;border-radius:4px;padding:6px 8px">
-        <div style="color:#45455E;margin-bottom:2px">CANTIDAD</div>
-        <div style="font-size:14px;font-weight:700;color:#e3b341">${o.qty_chk||o.qty_dec||0}</div>
+      <div style="background:#FFFFFF;border-radius:4px;padding:6px 8px">
+        <div style="color:#999999;margin-bottom:2px">CANTIDAD</div>
+        <div style="font-size:14px;font-weight:700;color:#F5A623">${o.qty_chk||o.qty_dec||0}</div>
       </div>
-      <div style="background:#101018;border-radius:4px;padding:6px 8px">
-        <div style="color:#45455E;margin-bottom:2px">CHECK-IN</div>
-        <div style="color:#E0E0EE">${o.chk_ts||'—'}</div>
+      <div style="background:#FFFFFF;border-radius:4px;padding:6px 8px">
+        <div style="color:#999999;margin-bottom:2px">CHECK-IN</div>
+        <div style="color:#333333">${o.chk_ts||'—'}</div>
       </div>
-      <div style="background:#101018;border-radius:4px;padding:6px 8px">
-        <div style="color:#45455E;margin-bottom:2px">VENDOR / SELLER</div>
-        <div style="color:#E0E0EE">${o.seller||'—'}</div>
+      <div style="background:#FFFFFF;border-radius:4px;padding:6px 8px">
+        <div style="color:#999999;margin-bottom:2px">VENDOR / SELLER</div>
+        <div style="color:#333333">${o.seller||'—'}</div>
       </div>
-      <div style="background:#101018;border-radius:4px;padding:6px 8px">
-        <div style="color:#45455E;margin-bottom:2px">PROCESO</div>
-        <div style="color:#E0E0EE">${o.tipo||o.estado||'—'}</div>
+      <div style="background:#FFFFFF;border-radius:4px;padding:6px 8px">
+        <div style="color:#999999;margin-bottom:2px">PROCESO</div>
+        <div style="color:#333333">${o.tipo||o.estado||'—'}</div>
       </div>
     </div>
     ${sugHtml}
@@ -2237,14 +2241,14 @@ function locSearchInput(q){
   if(q.length<2){ box.style.display='none'; _locSelIdx=-1; return; }
   _buildLocIdx();
   const hits=_locIdx.filter(r=>r.id.toUpperCase().includes(q)).slice(0,30);
-  if(!hits.length){ box.innerHTML=`<div style="padding:8px 12px;color:#45455E;font-size:10px">Sin resultados</div>`; box.style.display='block'; return; }
+  if(!hits.length){ box.innerHTML=`<div style="padding:8px 12px;color:#999999;font-size:10px">Sin resultados</div>`; box.style.display='block'; return; }
   _locSelIdx=-1;
   box.innerHTML=hits.map((r,i)=>{
-    const col=r.zone==='BL'?(r.skus>0?'#4da6ff':'#1a4f96'):(r.skus===0?'#252540':r.skus>=4?'#f85149':r.skus===3?'#d07030':r.skus===2?'#e3b341':'#3fb950');
-    const occ=r.skus>0?`<span style="color:${col};font-weight:700">${r.skus} SKU${r.skus!==1?'s':''}</span>`:`<span style="color:#45455E">vacía</span>`;
-    return `<div class="loc-hit" data-idx="${i}" style="padding:6px 12px;cursor:pointer;border-bottom:1px solid #18182A;display:flex;align-items:center;gap:10px"
+    const col=r.zone==='BL'?(r.skus>0?'#4da6ff':'#3483FA'):(r.skus===0?'#D9D9D9':r.skus>=4?'#F23D4F':r.skus===3?'#d07030':r.skus===2?'#F5A623':'#00A650');
+    const occ=r.skus>0?`<span style="color:${col};font-weight:700">${r.skus} SKU${r.skus!==1?'s':''}</span>`:`<span style="color:#999999">vacía</span>`;
+    return `<div class="loc-hit" data-idx="${i}" style="padding:6px 12px;cursor:pointer;border-bottom:1px solid #F5F5F5;display:flex;align-items:center;gap:10px"
       onmouseenter="locHover(${i})" onclick="locGo(${i})">
-      <span style="font-family:monospace;font-size:11px;color:#E0E0EE;flex:1">${r.id.replace(q,'<mark style="background:#264f78;color:#E0E0EE;border-radius:2px">'+q+'</mark>')}</span>
+      <span style="font-family:monospace;font-size:11px;color:#333333;flex:1">${r.id.replace(q,'<mark style="background:#264f78;color:#333333;border-radius:2px">'+q+'</mark>')}</span>
       ${occ}
     </div>`;
   }).join('');
@@ -2256,7 +2260,7 @@ function locHover(i){ _locSelIdx=i; _locHighlight(); }
 
 function _locHighlight(){
   document.querySelectorAll('.loc-hit').forEach((el,i)=>{
-    el.style.background=i===_locSelIdx?'#18182A':'';
+    el.style.background=i===_locSelIdx?'#F5F5F5':'';
   });
 }
 
@@ -2319,17 +2323,17 @@ document.addEventListener('click', e=>{
 (function initStatus(){
   const dot = document.getElementById('sse-dot');
   const lbl = document.getElementById('sse-lbl');
-  dot.style.background='#3fb950';
+  dot.style.background='#00A650';
   lbl.textContent='auto-refresh';
-  lbl.style.color='#3fb950';
+  lbl.style.color='#00A650';
 })();
 </script>
 <!-- Modal de slot -->
 <div id="slot-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);align-items:center;justify-content:center" onclick="if(event.target===this)cerrarModal()">
-  <div style="background:#101018;border:1px solid #252540;border-radius:8px;width:420px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.6)">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #252540;flex-shrink:0">
-      <div id="modal-title" style="font-family:monospace;font-weight:700;font-size:13px;color:#FFE600"></div>
-      <button onclick="cerrarModal()" style="background:none;border:none;color:#7878A0;font-size:18px;cursor:pointer;line-height:1;padding:0 4px">×</button>
+  <div style="background:#FFFFFF;border:1px solid #D9D9D9;border-radius:8px;width:420px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #D9D9D9;flex-shrink:0">
+      <div id="modal-title" style="font-family:monospace;font-weight:700;font-size:13px;color:#3483FA"></div>
+      <button onclick="cerrarModal()" style="background:none;border:none;color:#666666;font-size:18px;cursor:pointer;line-height:1;padding:0 4px">×</button>
     </div>
     <div id="modal-body" style="overflow-y:auto;padding:12px 16px;flex:1"></div>
   </div>
