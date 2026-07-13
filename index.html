@@ -1558,6 +1558,7 @@ let INB_DATA=[];   // IS-level NT inbound
 let PW_DATA=[];    // movables pendientes de putaway (BT_FBM_PUTAWAY)
 let PW_VIEW='movable'; // 'movable' | 'is'
 let PW_SLA_FILTER='all'; // 'all' | 'over' | 'warn' | 'ok' | 'nt'
+let PW_UPDATED='';
 
 async function loadCheckin(){
   try{
@@ -1578,7 +1579,7 @@ async function loadCheckin(){
       document.getElementById('ck-upd').textContent=d.updated||'—';
     }
     if(r2.ok){ const d=await r2.json(); INB_DATA=d.shipments||[]; }
-    if(r3.ok){ const d=await r3.json(); PW_DATA=d.movables||[]; }
+    if(r3.ok){ const d=await r3.json(); PW_DATA=d.movables||[]; PW_UPDATED=d.updated||''; }
     chkRender();
     renderPutawaySLA();
     if(SUG_READY) renderColaPendiente();
@@ -1626,6 +1627,8 @@ function renderPutawaySLA(){
     <span style="color:#e3b341;font-weight:700">📦 Putaway por Guardar</span>
     <span style="font-size:8px;color:#484f58">${src.length} movables · ${src.reduce((s,g)=>s+(g.sku_count||0),0)} SKUs</span>
   </div>
+  ${PW_UPDATED?`<div style="font-size:8px;color:#484f58;margin-top:2px">Ultima actualizacion: <b style="color:#8b949e">${PW_UPDATED}</b></div>`:''}
+
   <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
     ${slaBtn('all','Todos','#8b949e')}
     ${slaBtn('over','🔴 '+over+' Vencidos','#f85149')}
