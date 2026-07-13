@@ -1721,12 +1721,14 @@ function renderPutawaySLA(){
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
-  // Recalcula mins_restantes en vivo: pw_created (UTC) + 48h - ahora
+  // Recalcula mins_restantes en vivo usando expire_at_date de WMS (exacto) o pw_created+48h (fallback)
   function liveMins(g){
+    if(g.expire_at_date){
+      return Math.round((new Date(g.expire_at_date).getTime() - Date.now()) / 60000);
+    }
     if(!g.pw_created) return g.mins_restantes;
-    const created = new Date(g.pw_created.replace(' ','T') + 'Z'); // 'Z' = UTC
-    const deadline = new Date(created.getTime() + 48*60*60*1000);
-    return Math.round((deadline.getTime() - Date.now()) / 60000);
+    const created = new Date(g.pw_created.replace(' ','T') + 'Z');
+    return Math.round((new Date(created.getTime() + 48*60*60*1000).getTime() - Date.now()) / 60000);
   }
 
   // Agrupar por hora de appointment (igual que WMS)

@@ -6,7 +6,7 @@ en CLRM03, directo desde BT_FBM_PUTAWAY.
 PW_STATUS: WAITING_START = pendiente, WAITING_FINISH = en proceso
 """
 import json, os, sys, io, time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from google.cloud import bigquery
 
@@ -17,16 +17,37 @@ WH       = 'CLRM03'
 BASE     = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE, 'data')
 OUT_FILE = os.path.join(DATA_DIR, f'putaway_{WH}.json')
+WMS_FILE = os.path.join(DATA_DIR, 'wms_totes_completo.json')
 
-SLA_WARN = 48 * 60  # 48h en minutos
+SLA_WARN = 48 * 60  # fallback: 48h en minutos
+
+def load_wms_expire():
+    """Carga expire_at_date real de WMS por movable."""
+    if not os.path.exists(WMS_FILE):
+        return {}
+    with open(WMS_FILE, encoding='utf-8') as f:
+        data = json.load(f)
+    lookup = {}
+    for t in data:
+        mov = t.get('movable', '')
+        exp = t.get('expire_at_date', '')
+        if mov and exp:
+            # Parsear ISO 8601 con offset +0000
+            try:
+                dt = datetime.fromisoformat(exp.replace('+0000', '+00:00')).replace(tzinfo=None)
+                lookup[mov] = dt  # UTC naive
+            except Exception:
+                pass
+    return lookup
 
 def generate():
     now  = datetime.now(tz=ZoneInfo('America/Santiago'))
-    tz   = ZoneInfo('America/Santiago')
-    from datetime import timezone as _tz
-    now_utc   = datetime.now(tz=_tz.utc).replace(tzinfo=None)  # UTC naive — para mins_restantes
-    now_naive = now.replace(tzinfo=None)                        # Chile local — para mins_en_proceso (igual que WMS)
+    now_utc   = datetime.now(tz=timezone.utc).replace(tzinfo=None)  # UTC naive
+    now_naive = now.replace(tzinfo=None)                              # Chile local — para mins_en_proceso
     desde = (now - timedelta(days=60)).strftime('%Y-%m-%d')
+
+    wms_expire = load_wms_expire()
+    print(f"  WMS expire_at cargado: {len(wms_expire)} movables", flush=True)
 
     print(f"[{now.strftime('%H:%M:%S')}] Generando putaway pendiente {WH}...", flush=True)
     client = bigquery.Client(project=PROJECT)
@@ -91,21 +112,24 @@ def generate():
         is_nt = '-NT-' in (r.movable or '')
         inb   = is_data.get(r.is_id, None)
 
-        # PW_CREATED_DATETIME está en UTC en BigQuery
-        # mins_en_proceso: WMS usa hora_chile_ahora - pw_created_utc (sin ajuste de zona)
-        # mins_restantes: deadline_utc - now_utc (correcto en UTC puro)
+        # mins_en_proceso: WMS usa hora_chile_ahora - pw_created_utc
+        # mins_restantes: usa expire_at_date real de WMS si disponible, sino pw_created + 48h
         pw_dt = r.pw_created_dt
         if pw_dt:
             pw_utc = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
-            mins_en_proceso = int((now_naive - pw_utc).total_seconds() / 60)  # Chile - UTC = como WMS
-            deadline = pw_utc + timedelta(minutes=SLA_WARN)
+            mins_en_proceso = int((now_naive - pw_utc).total_seconds() / 60)
+            # Deadline: WMS expire_at_date tiene prioridad sobre estimación 48h
+            wms_deadline = wms_expire.get(r.movable)
+            deadline = wms_deadline if wms_deadline else pw_utc + timedelta(minutes=SLA_WARN)
             mins_restantes = int((deadline - now_utc).total_seconds() / 60)
             sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
+            wms_exact = wms_deadline is not None
         else:
             pw_utc = None
             mins_en_proceso = None
             mins_restantes = None
             sla = 'unknown'
+            wms_exact = False
 
         mins_since = mins_en_proceso  # alias para compatibilidad con dashboard
 
@@ -123,10 +147,12 @@ def generate():
             'appointment':    fmt(inb.appointment_dt) if inb else None,
             'arrival':        fmt(inb.arrival_dt) if inb else None,
             'pw_created':     fmt(r.pw_created_dt),
+            'expire_at_date': wms_deadline.strftime('%Y-%m-%dT%H:%M:%S+00:00') if (pw_dt and wms_deadline) else None,
             'mins_en_proceso': mins_en_proceso,
             'mins_since_chk': mins_since,
             'mins_restantes': mins_restantes,
             'sla':            sla,
+            'wms_exact':      wms_exact,
         })
 
     nt_movs  = sum(1 for x in items if x['is_nt'])
