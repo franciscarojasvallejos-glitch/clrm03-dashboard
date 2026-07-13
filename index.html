@@ -174,11 +174,12 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 #chk-toolbar{background:#161b22;border-bottom:1px solid #30363d;padding:7px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap}
 #chk-search{background:#21262d;border:1px solid #30363d;color:#c9d1d9;font-size:11px;padding:4px 10px;border-radius:4px;outline:none;font-family:monospace;width:220px}
 #chk-search:focus{border-color:#58a6ff}
-.chk-filter-btn{background:none;border:1px solid #30363d;color:#8b949e;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;cursor:pointer}
-.chk-filter-btn.on{background:#21262d}
-.chk-filter-btn.on.f-pend{color:#e3b341;border-color:#e3b341}
-.chk-filter-btn.on.f-over{color:#f85149;border-color:#f85149}
-.chk-filter-btn.on.f-done{color:#3fb950;border-color:#3fb950}
+.chk-filter-btn{background:none;border:1px solid #30363d;color:#484f58;font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;cursor:pointer;opacity:.5;transition:all .15s}
+.chk-filter-btn.on{opacity:1}
+.chk-filter-btn.on.f-pend{color:#e3b341;border-color:#e3b341;background:#e3b34118}
+.chk-filter-btn.on.f-over{color:#f85149;border-color:#f85149;background:#f8514918}
+.chk-filter-btn.on.f-done{color:#3fb950;border-color:#3fb950;background:#3fb95018}
+.chk-filter-btn.on.f-nt{color:#58a6ff;border-color:#58a6ff;background:#58a6ff18}
 #chk-kpis{margin-left:auto;display:flex;gap:12px;align-items:center}
 .chk-kpi{text-align:center}
 .chk-kv{font-size:15px;font-weight:700}
@@ -333,7 +334,7 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
     <button class="chk-filter-btn on f-pend" id="chk-f-pend" onclick="chkToggle('pend')">⏳ Pendientes</button>
     <button class="chk-filter-btn on f-over" id="chk-f-over" onclick="chkToggle('over')">🔴 Sobre SLA</button>
     <button class="chk-filter-btn on f-done" id="chk-f-done" onclick="chkToggle('done')">✓ Completados</button>
-    <button class="chk-filter-btn" id="chk-f-nt" onclick="chkToggle('nt')" style="border-color:#58a6ff;color:#58a6ff">🏷 Solo NT</button>
+    <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')">🏷 Solo NT</button>
     <div id="chk-kpis">
       <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#58a6ff">—</div><div class="chk-kl">Total</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#58a6ff">—</div><div class="chk-kl">En Putaway</div></div>
