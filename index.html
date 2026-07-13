@@ -1738,16 +1738,15 @@ function pwFilterMovable(mv){
     return;
   }
   PW_MOVABLE_FILTER=mv;
+
+  // Obtener is_id desde PW_DATA (fuente confiable)
+  const pwRec=PW_DATA.find(g=>g.movable===mv)||{};
+  const isId=pwRec.is_id||'';
+  const isNT=mv.includes('-NT-');
+
   CHK_FILTER._movable=mv;
-  // Mostrar IS + movable en el header del detalle
-  const g=Object.values(
-    CHK_DATA.filter(o=>o.sla!=='done'&&(o.movable||'(sin movable)')===mv)
-    .reduce((acc,o)=>{
-      if(!acc[mv]) acc[mv]={movable:mv,is_id:o.is_id||''};
-      return acc;
-    },{})
-  )[0]||{};
-  const isNT=mv.includes('-NT-')||CHK_DATA.some(o=>o.movable===mv&&o.is_nt);
+  CHK_FILTER._is_id=isId;
+
   const hdr=document.getElementById('chk-det-hdr');
   hdr.innerHTML=`
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1756,7 +1755,7 @@ function pwFilterMovable(mv){
     </div>
     <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
       <span style="font-size:9px;color:#484f58">IS</span>
-      <span style="font-family:monospace;font-size:12px;color:#e3b341;font-weight:700">${g.is_id||'—'}</span>
+      <span style="font-family:monospace;font-size:12px;color:#e3b341;font-weight:700">${isId||'—'}</span>
       <button onclick="pwClearFilter()" style="margin-left:auto;font-size:8px;padding:2px 7px;border-radius:8px;background:#30363d;color:#c9d1d9;border:none;cursor:pointer">✕ Volver</button>
     </div>`;
   chkRenderMovable();
@@ -1894,9 +1893,13 @@ function renderInboundIS(){
 }
 
 function chkRenderMovable(){
-  // misma lógica de chkRender pero filtrado por movable
   const mv=CHK_FILTER._movable;
-  const list=CHK_DATA.filter(o=>o.sla!=='done'&&(o.movable||'(sin movable)')===mv);
+  const isId=CHK_FILTER._is_id||'';
+  // Buscar primero por movable, si no hay resultados buscar por IS
+  let list=CHK_DATA.filter(o=>o.sla!=='done'&&(o.movable||'')===mv);
+  if(!list.length && isId){
+    list=CHK_DATA.filter(o=>o.sla!=='done'&&String(o.is_id||o.inbound_id||'')===String(isId));
+  }
   const tbody=document.getElementById('chk-tbody');
   tbody.innerHTML=list.map(o=>{
     const cat=CATALOG[o.sku]||{};
@@ -1913,7 +1916,7 @@ function chkRenderMovable(){
       <td style="font-size:9px;color:#8b949e">${o.seller||'—'}</td>
       <td style="font-size:9px;color:#484f58;font-family:monospace">${o.is_id||'—'}</td>
     </tr>`;
-  }).join('')||`<tr><td colspan="9" style="text-align:center;color:#484f58;padding:12px;font-size:10px">Sin items en movable ${mv}</td></tr>`;
+  }).join('')||`<tr><td colspan="9" style="text-align:center;color:#484f58;padding:12px;font-size:10px">Sin items en check-in para este movable${isId?' (IS '+isId+')':''}</td></tr>`;
 }
 
 function chkToggle(f){
