@@ -1104,7 +1104,7 @@ function switchTab(tab){
   document.getElementById('inv-view').style.display  = tab==='inv'  ? 'flex' : 'none';
   document.getElementById('chk-view').style.display  = tab==='chk'  ? 'flex' : 'none';
   document.querySelectorAll('.dash-tab').forEach((b,i)=>{
-    b.classList.toggle('active', ['mapa','sug','inv','chk'][i]===tab);
+    b.classList.toggle('active', ['mapa','inv','chk','sug'][i]===tab);
   });
   if(tab==='sug' && !SUG_READY) buildSugIndex();
   if(tab==='inv'){
