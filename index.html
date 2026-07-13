@@ -271,7 +271,7 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
   </div>
   <div id="sug-body">
     <div id="sug-sku-list">
-      <div id="sug-sku-hdr"><span>SKU · Producto</span><span>Ubics.</span></div>
+      <div id="sug-sku-hdr"><span>SKU · SLA Pendiente</span><span>Qty</span></div>
       <div id="sug-sku-items"><div style="padding:16px;color:#484f58;font-size:10px">Cargando inventario…</div></div>
     </div>
     <div id="sug-results">
@@ -1359,7 +1359,8 @@ function buildSugIndex(){
 
   SUG_READY=true;
   document.getElementById('sug-status').textContent=`${SUG_SKUS.length.toLocaleString()} SKUs · ${SUG_SLOTS.length.toLocaleString()} ubicaciones disponibles`;
-  renderSKUList(SUG_SKUS);
+  const pend=buildPendingSKUs();
+  renderSKUList(pend.length ? pend : SUG_SKUS);
   renderColaPendiente();
   renderSinMovimiento();
 }
@@ -1464,9 +1465,53 @@ function renderColaPendiente(){
   }
 }
 
+function buildPendingSKUs(){
+  // Construir lista de SKUs pendientes desde CHK_DATA, ordenados por SLA urgencia
+  const urgOrder={'over':0,'warn':1,'ok':2,'pw_active':3,'unknown':4};
+  const seen={};
+  const list=[];
+  CHK_DATA.filter(o=>o.sla!=='done').forEach(o=>{
+    if(!seen[o.sku]){
+      seen[o.sku]={sku:o.sku, sla:o.sla, mins_restantes:o.mins_restantes, qty:0, seller:o.seller||''};
+      list.push(seen[o.sku]);
+    }
+    seen[o.sku].qty+=(o.qty_chk||o.qty_dec||0);
+    // mantener el peor SLA del SKU
+    if((urgOrder[o.sla]??9)<(urgOrder[seen[o.sku].sla]??9)){
+      seen[o.sku].sla=o.sla;
+      seen[o.sku].mins_restantes=o.mins_restantes;
+    }
+  });
+  return list.sort((a,b)=>{
+    const ua=urgOrder[a.sla]??9, ub=urgOrder[b.sla]??9;
+    if(ua!==ub) return ua-ub;
+    return (a.mins_restantes??9999)-(b.mins_restantes??9999);
+  });
+}
+
 function renderSKUList(list){
   const el=document.getElementById('sug-sku-items');
   if(!list.length){el.innerHTML='<div style="padding:12px;color:#484f58;font-size:10px">Sin resultados</div>';return;}
+
+  // Si la lista viene con campo sla, es lista de pendientes — usar vista SLA
+  if(list[0] && list[0].sla!==undefined && list[0].locs===undefined){
+    el.innerHTML=list.slice(0,200).map(o=>{
+      const slaCol=o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':o.sla==='pw_active'?'#58a6ff':'#3fb950';
+      const slaIcon=o.sla==='over'?'🔴':o.sla==='warn'?'⚠️':o.sla==='pw_active'?'📦':'🟢';
+      const mins=o.mins_restantes;
+      const slaTxt=o.sla==='over'?fmtHoras(mins!=null?Math.abs(mins):null)+' venc'
+                  :o.sla==='warn'?fmtHoras(mins)+' rest'
+                  :o.sla==='pw_active'?'proceso':'ok';
+      return `<div class="sug-sku-item${SUG_SEL===o.sku?' sel':''}" onclick="selSKU('${o.sku}')">
+        <span class="sug-sku-inv" style="color:${slaCol}">${slaIcon} ${o.sku}</span>
+        <span class="sug-sku-name" style="color:${slaCol};font-size:8px">${slaTxt}</span>
+        <span class="sug-sku-locs" style="color:#e3b341">${o.qty}</span>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // Vista normal (búsqueda por texto)
   el.innerHTML=list.slice(0,200).map(o=>`
     <div class="sug-sku-item${SUG_SEL===o.sku?' sel':''}" onclick="selSKU('${o.sku}')">
       <span class="sug-sku-inv">${o.sku}</span>
@@ -1478,7 +1523,14 @@ function renderSKUList(list){
 function filtrarSKUList(q){
   if(!SUG_READY) return;
   q=q.toLowerCase().trim();
-  if(!q){renderSKUList(SUG_SKUS);return;}
+  if(!q){
+    // Sin búsqueda: mostrar pendientes por SLA si hay, sino inventario
+    const pend=buildPendingSKUs();
+    if(pend.length) renderSKUList(pend);
+    else renderSKUList(SUG_SKUS);
+    return;
+  }
+  // Con búsqueda: filtrar inventario completo
   const fil=SUG_SKUS.filter(o=>o.sku.toLowerCase().includes(q)||o.title.toLowerCase().includes(q)||o.brand.toLowerCase().includes(q)||o.domain.toLowerCase().includes(q));
   renderSKUList(fil);
 }
