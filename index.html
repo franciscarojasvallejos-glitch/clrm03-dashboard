@@ -1559,6 +1559,7 @@ let PW_DATA=[];    // movables pendientes de putaway (BT_FBM_PUTAWAY)
 let PW_VIEW='movable'; // 'movable' | 'is'
 let PW_SLA_FILTER='all'; // 'all' | 'over' | 'warn' | 'ok' | 'nt'
 let PW_UPDATED='';
+let PW_SORT='asc'; // 'asc' = más vencidos primero, 'desc' = más tiempo primero
 
 async function loadCheckin(){
   try{
@@ -1612,7 +1613,7 @@ function renderPutawaySLA(){
     const na=a.is_nt?0:1, nb=b.is_nt?0:1;
     if(na!==nb) return na-nb;
     const ra=a.mins_restantes??999999, rb=b.mins_restantes??999999;
-    if(ra!==rb) return ra-rb;
+    if(ra!==rb) return PW_SORT==='asc' ? ra-rb : rb-ra;
     return (b.mins_since_chk||0)-(a.mins_since_chk||0);
   });
 
@@ -1642,6 +1643,7 @@ function renderPutawaySLA(){
   <div style="display:flex;gap:4px;margin-top:6px">
     <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='movable'?'#58a6ff':'#30363d'};background:${PW_VIEW==='movable'?'#1a2a4a':'transparent'};color:${PW_VIEW==='movable'?'#58a6ff':'#8b949e'};cursor:pointer">Por Movable</button>
     <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#58a6ff':'#30363d'};background:${PW_VIEW==='is'?'#1a2a4a':'transparent'};color:${PW_VIEW==='is'?'#58a6ff':'#8b949e'};cursor:pointer">Por IS</button>
+    <button onclick="pwToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;cursor:pointer">${PW_SORT==='asc'?'↑ Mayor':'↓ Menor'}</button>
   </div>`;
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
@@ -1773,6 +1775,11 @@ function pwSetView(v){
 
 function pwSetSLA(v){
   PW_SLA_FILTER=v;
+  renderPutawaySLA();
+}
+
+function pwToggleSort(){
+  PW_SORT = PW_SORT==='asc' ? 'desc' : 'asc';
   renderPutawaySLA();
 }
 
