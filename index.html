@@ -1554,20 +1554,27 @@ function buscarSugerencia(){
 let CHK_DATA=[], CHK_SEL=null;
 let CHK_FILTER={q:'', pend:true, over:true, done:true, nt:false};
 let CHK_AUTO=null;
+let INB_DATA=[];   // IS-level NT inbound
+let PW_VIEW='movable'; // 'movable' | 'is'
 
 async function loadCheckin(){
   try{
-    const r=await fetch('data/checkin_CLRM03.json?t='+Date.now());
-    if(!r.ok) return;
-    const d=await r.json();
-    CHK_DATA=d.items||[];
-    const s=d.stats||{};
-    document.getElementById('ck-total').textContent=(s.total||0).toLocaleString();
-    document.getElementById('ck-pw').textContent=(s.en_putaway||0).toLocaleString();
-    document.getElementById('ck-pend').textContent=((s.pendientes||0)).toLocaleString();
-    document.getElementById('ck-over').textContent=(s.over_sla||0).toLocaleString();
-    document.getElementById('ck-done').textContent=(s.done||0).toLocaleString();
-    document.getElementById('ck-upd').textContent=d.updated||'—';
+    const [r1,r2]=await Promise.all([
+      fetch('data/checkin_CLRM03.json?t='+Date.now()),
+      fetch('data/inbound_nt_CLRM03.json?t='+Date.now())
+    ]);
+    if(r1.ok){
+      const d=await r1.json();
+      CHK_DATA=d.items||[];
+      const s=d.stats||{};
+      document.getElementById('ck-total').textContent=(s.total||0).toLocaleString();
+      document.getElementById('ck-pw').textContent=(s.en_putaway||0).toLocaleString();
+      document.getElementById('ck-pend').textContent=((s.pendientes||0)).toLocaleString();
+      document.getElementById('ck-over').textContent=(s.over_sla||0).toLocaleString();
+      document.getElementById('ck-done').textContent=(s.done||0).toLocaleString();
+      document.getElementById('ck-upd').textContent=d.updated||'—';
+    }
+    if(r2.ok){ const d=await r2.json(); INB_DATA=d.shipments||[]; }
     chkRender();
     renderPutawaySLA();
     if(SUG_READY) renderColaPendiente();
@@ -1630,7 +1637,13 @@ function renderPutawaySLA(){
     <span style="color:#58a6ff">📦 ${active} activos</span>
     <span style="color:#58a6ff;border:1px solid #1f6feb;padding:0 4px;border-radius:4px">NT ${ntCount}</span>
     ${PW_MOVABLE_FILTER?`<button onclick="pwClearFilter()" style="margin-left:auto;font-size:8px;padding:1px 6px;border-radius:8px;background:#30363d;color:#c9d1d9;border:none;cursor:pointer">✕ Limpiar filtro</button>`:''}
+  </div>
+  <div style="display:flex;gap:4px;margin-top:8px">
+    <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='movable'?'#58a6ff':'#30363d'};background:${PW_VIEW==='movable'?'#1a2a4a':'transparent'};color:${PW_VIEW==='movable'?'#58a6ff':'#8b949e'};cursor:pointer">Por Movable</button>
+    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#58a6ff':'#30363d'};background:${PW_VIEW==='is'?'#1a2a4a':'transparent'};color:${PW_VIEW==='is'?'#58a6ff':'#8b949e'};cursor:pointer">Por IS (NT)</button>
   </div>`;
+
+  if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
   function slaColor(sla){return sla==='over'?'#f85149':sla==='warn'?'#e3b341':sla==='pw_active'?'#58a6ff':'#3fb950';}
   function slaIcon(sla){return sla==='over'?'🔴':sla==='warn'?'⚠️':sla==='pw_active'?'📦':'🟢';}
@@ -1750,6 +1763,70 @@ function pwClearFilter(){
   CHK_FILTER._movable=null;
   chkRender();
   renderPutawaySLA();
+}
+
+function pwSetView(v){
+  PW_VIEW=v;
+  renderPutawaySLA();
+}
+
+function renderInboundIS(){
+  const body=document.getElementById('chk-det-body');
+  const ntOnly=INB_DATA.filter(x=>x.ntb_units>0);
+  if(!ntOnly.length){
+    body.innerHTML=`<div style="color:#484f58;font-size:10px;padding:20px;text-align:center">Sin IS NT pendientes</div>`;
+    return;
+  }
+  function fmtTipo(t){return t==='ftl'?'FTL':t==='pickup'?'Colecta':t==='supplier'?'Proveedor':(t||'—');}
+  function slaCol(s){return s==='over'?'#f85149':s==='warn'?'#e3b341':'#3fb950';}
+  function slaIco(s){return s==='over'?'🔴':s==='warn'?'⚠️':'🟢';}
+
+  // Separadores por hora de vencimiento (mismo concepto que vista movable)
+  function expiryLabel(mins){
+    if(mins==null) return {key:'z',label:'Sin fecha',col:'#484f58',ico:'—'};
+    if(mins<0) return {key:'a_ret',label:'Retrasado',col:'#f85149',ico:'🔴'};
+    const exp=new Date(Date.now()+mins*60000);
+    const h=String(exp.getHours()).padStart(2,'0');
+    const isToday=exp.toDateString()===new Date().toDateString();
+    return {key:`b_${exp.toDateString()}_${h}`,label:`${isToday?'Hoy':'Mañana'} ${h}:00`,col:mins<1440?'#e3b341':'#3fb950',ico:mins<1440?'⚠️':'🟢'};
+  }
+
+  let html='', lastKey='';
+  ntOnly.forEach(is=>{
+    const bk=expiryLabel(is.mins_restantes);
+    if(bk.key!==lastKey){
+      lastKey=bk.key;
+      const grpIS=ntOnly.filter(x=>expiryLabel(x.mins_restantes).key===bk.key);
+      const grpNTB=grpIS.reduce((s,x)=>s+x.ntb_units,0);
+      html+=`<div style="padding:5px 10px;background:#161b22;border-bottom:1px solid #30363d;position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;font-weight:700;color:${bk.col}">${bk.ico} ${bk.label}</span>
+        <span style="font-size:8px;color:#484f58;margin-left:auto">${grpIS.length} IS · <span style="color:#58a6ff">${grpNTB} u NT</span></span>
+      </div>`;
+    }
+    const appt=is.appointment?is.appointment.slice(5,16).replace('T',' '):'—';
+    const arr=is.arrival?is.arrival.slice(5,16).replace('T',' '):'—';
+    const tipo=fmtTipo(is.shipment_type);
+    const pct=is.qty_declared>0?Math.round(is.qty_checkin/is.qty_declared*100):0;
+    html+=`<div style="padding:8px 10px;border-bottom:1px solid #21262d;border-left:3px solid #58a6ff">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+        <span style="padding:1px 5px;border-radius:6px;background:#1a2a4a;color:#58a6ff;font-size:8px;border:1px solid #1f6feb;font-weight:700">NT</span>
+        <span style="font-size:9px;color:#484f58">IS</span>
+        <span style="font-family:monospace;font-size:11px;color:#e3b341;font-weight:700">${is.is_id}</span>
+        <span style="margin-left:auto;font-size:8px;color:#484f58;background:#21262d;padding:1px 5px;border-radius:4px">${tipo}</span>
+      </div>
+      <div style="display:flex;gap:8px;font-size:9px;margin-bottom:3px;flex-wrap:wrap">
+        <span style="color:#58a6ff;font-weight:700">${is.ntb_units} u NT</span>
+        ${is.tb_units?`<span style="color:#484f58">${is.tb_units} TB</span>`:''}
+        <span style="color:#8b949e">${is.ntb_skus} SKUs</span>
+        <span style="color:#8b949e;margin-left:auto">✓ ${pct}% checkin</span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:8px;color:#484f58">
+        <span>📅 Agendado: <span style="color:#8b949e">${appt}</span></span>
+        <span>🛬 Llegada: <span style="color:#8b949e">${arr}</span></span>
+      </div>
+    </div>`;
+  });
+  body.innerHTML=html;
 }
 
 function chkRenderMovable(){
