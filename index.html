@@ -238,9 +238,9 @@ h1{font-size:13px;font-weight:700;color:#e3b341;white-space:nowrap}
 </div>
 <div id="dash-tabs">
   <button class="dash-tab active" onclick="switchTab('mapa')">🗺️ Mapa de Ocupación</button>
-  <button class="dash-tab tab-sug" onclick="switchTab('sug')">📍 Sugerencias de Guardado</button>
   <button class="dash-tab" onclick="switchTab('inv')">📦 Inventario SKU</button>
   <button class="dash-tab" onclick="switchTab('chk')">📥 Check-in &amp; Putaway</button>
+  <button class="dash-tab tab-sug" onclick="switchTab('sug')">📍 Sugerencias de Guardado</button>
 </div>
 <div id="mapa-view">
   <div id="sbar">
@@ -1408,61 +1408,59 @@ function renderSinMovimiento(){
 function renderColaPendiente(){
   const el=document.getElementById('sug-cola');
   if(!el) return;
-  if(!SUG_READY){ el.innerHTML='<div style="color:#484f58;font-size:10px;padding:8px">Cargando índice…</div>'; return; }
 
-  // Filtrar pendientes (excluir done) y ordenar: over primero, luego warn, luego ok; dentro de cada grupo por mins_restantes asc
-  const urgOrder={'over':0,'warn':1,'ok':2,'pw_active':3,'unknown':4};
-  const pending=CHK_DATA
-    .filter(o=>o.sla!=='done')
-    .sort((a,b)=>{
-      const ua=urgOrder[a.sla]??9, ub=urgOrder[b.sla]??9;
-      if(ua!==ub) return ua-ub;
-      return (a.mins_restantes??9999)-(b.mins_restantes??9999);
-    });
+  // Usar PW_DATA (BT_FBM_PUTAWAY) como fuente — movables reales pendientes
+  const src=PW_DATA.length ? PW_DATA : [];
+  const urgOrder={'over':0,'warn':1,'ok':2,'unknown':3};
+  const pending=[...src].sort((a,b)=>{
+    const ua=urgOrder[a.sla]??9, ub=urgOrder[b.sla]??9;
+    if(ua!==ub) return ua-ub;
+    return (a.mins_restantes??9999)-(b.mins_restantes??9999);
+  });
 
   if(!pending.length){
-    el.innerHTML='<div style="color:#3fb950;font-size:11px;padding:16px;text-align:center">✓ Sin items pendientes de putaway</div>';
+    el.innerHTML='<div style="color:#3fb950;font-size:11px;padding:16px;text-align:center">Sin movables pendientes de putaway</div>';
     return;
   }
 
-  el.innerHTML=pending.slice(0,50).map(o=>{
-    const cat=CATALOG[o.sku]||{};
-    const entry={sku:o.sku,domain:cat.domain||cat.category||'',brand:cat.brand||''};
-    const top3=SUG_SLOTS.map(sl=>{
-      const {score,tags,stars}=scoreSugerencia(sl,o.sku,entry.domain,entry.brand);
-      return {...sl,score,tags,stars};
-    }).sort((a,b)=>b.score-a.score).slice(0,3);
+  const total=pending.length;
+  const over=pending.filter(g=>g.sla==='over').length;
+  const warn=pending.filter(g=>g.sla==='warn').length;
+  const nt=pending.filter(g=>g.is_nt).length;
 
-    const urgBorder=o.sla==='over'?'#f85149':o.sla==='warn'?'#e3b341':'#30363d';
-    const imgId=`cola-img-${(o.sku||'').replace(/[^a-z0-9]/gi,'_')}`;
-    if(cat.item_id) setTimeout(()=>fetchMeliImg(cat.item_id,imgId),200);
-
-    return `<div style="border:1px solid ${urgBorder};border-radius:6px;padding:8px;margin-bottom:6px;background:#161b22">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        ${cat.img||cat.item_id?`<img id="${imgId}" src="${cat.img||''}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;background:#0d1117;border:1px solid #30363d;flex-shrink:0" onerror="this.style.display='none'">`:''}
-        <div style="flex:1;min-width:0">
-          <div style="font-family:monospace;font-size:10px;font-weight:700;color:#58a6ff">${o.sku}</div>
-          <div style="font-size:9px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat.title||'—'}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          ${chkSlaLabel(o)}
-          <div style="font-size:8px;color:#484f58;margin-top:2px">Qty: <b style="color:#e3b341">${o.qty_chk||o.qty_dec||0}</b></div>
-        </div>
+  el.innerHTML=`<div style="display:flex;gap:10px;font-size:9px;color:#484f58;margin-bottom:8px;flex-wrap:wrap">
+    <span>${total} movables</span>
+    <span style="color:#f85149">🔴 ${over} vencidos</span>
+    <span style="color:#e3b341">⚠️ ${warn} en riesgo</span>
+    <span style="color:#58a6ff">NT ${nt}</span>
+  </div>`+
+  pending.slice(0,60).map(g=>{
+    const urgBorder=g.sla==='over'?'#f85149':g.sla==='warn'?'#e3b341':g.is_nt?'#1f6feb':'#21262d';
+    const slaCol=g.sla==='over'?'#f85149':g.sla==='warn'?'#e3b341':'#3fb950';
+    const slaTxt=g.sla==='over'?`🔴 Vencido ${fmtHoras(g.mins_restantes!=null?Math.abs(g.mins_restantes):null)}`
+                :g.sla==='warn'?`⚠️ ${fmtHoras(g.mins_restantes)} restantes`
+                :g.mins_restantes!=null?`🟢 ${fmtHoras(g.mins_restantes)} restantes`:'Sin SLA';
+    const wmsUrl=g.is_id?`https://wms.adminml.com/reports/totes?inbound_id=${g.is_id}&resource=PUT_AWAY`:'';
+    return `<div style="border:1px solid ${urgBorder};border-radius:6px;padding:8px 10px;margin-bottom:5px;background:#161b22;cursor:pointer" onclick="pwFilterMovable('${g.movable}');switchTab('chk')">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        ${g.is_nt?`<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:#1a2a4a;color:#58a6ff;border:1px solid #1f6feb;font-weight:700">NT</span>`:''}
+        ${g.pw_status==='WAITING_FINISH'?`<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:#1a3a1a;color:#3fb950;border:1px solid #238636">EN PROCESO</span>`:''}
+        <span style="font-family:monospace;font-size:10px;color:#e6edf3;font-weight:700;flex:1">${g.movable}</span>
+        <span style="font-size:9px;color:${slaCol};font-weight:700">${slaTxt}</span>
       </div>
-      <div style="font-size:8px;color:#484f58;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">📍 Top ubicaciones:</div>
-      ${top3.map((sl,i)=>`
-        <div style="display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;background:#0d1117;margin-bottom:2px;font-size:9px">
-          <span style="color:#484f58;min-width:12px">${i+1}.</span>
-          <span style="font-family:monospace;color:#c9d1d9;font-weight:700;flex:1">${sl.id}</span>
-          <span style="color:#484f58">${sl.area}</span>
-          <span style="color:${volColor(sl.pct_vol||0)}">${sl.pct_vol!=null?sl.pct_vol+'%':'—'}</span>
-          <span style="color:#e3b341">${sl.stars}</span>
-          <span style="color:#484f58">${sl.tags[0]?.txt||''}</span>
-        </div>`).join('')}
+      <div style="display:flex;gap:12px;font-size:9px;color:#484f58;flex-wrap:wrap">
+        <span>IS <b style="color:#e3b341">${g.is_id||'—'}</b></span>
+        <span>${g.shipment_type||'—'}</span>
+        <span><b style="color:#c9d1d9">${g.sku_count||0}</b> SKUs</span>
+        <span><b style="color:#c9d1d9">${g.qty_checkin||0}</b> u</span>
+        <span style="color:#8b949e">${g.seller||'—'}</span>
+        ${wmsUrl?`<a href="${wmsUrl}" target="_blank" onclick="event.stopPropagation()" style="color:#58a6ff;text-decoration:none;margin-left:auto">WMS ↗</a>`:''}
+      </div>
     </div>`;
   }).join('');
-  if(pending.length>50){
-    el.innerHTML+=`<div style="text-align:center;color:#484f58;font-size:9px;padding:8px">Mostrando 50 de ${pending.length} pendientes</div>`;
+
+  if(total>60){
+    el.innerHTML+=`<div style="text-align:center;color:#484f58;font-size:9px;padding:8px">Mostrando 60 de ${total} movables</div>`;
   }
 }
 
