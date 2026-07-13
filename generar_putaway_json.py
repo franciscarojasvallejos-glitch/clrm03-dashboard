@@ -98,23 +98,14 @@ def generate():
         else:
             mins_en_proceso = None
 
-        # SLA = appointment_dt del IS - now  (igual que WMS)
-        # Si no hay appointment, fallback a oldest_chk + SLA_WARN
-        appt = inb.appointment_dt if inb else None
-        if appt:
-            appt_naive = appt.replace(tzinfo=None) if isinstance(appt, datetime) else datetime.fromisoformat(str(appt)).replace(tzinfo=None)
-            mins_restantes = int((appt_naive - now_naive).total_seconds() / 60)
+        # SLA = pw_created_dt + 48h - now  (igual que WMS: 48h desde creacion del movable)
+        if pw_dt:
+            deadline = pw_naive + timedelta(minutes=SLA_WARN)
+            mins_restantes = int((deadline - now_naive).total_seconds() / 60)
             sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
         else:
-            oldest = inb.oldest_chk if inb else None
-            if oldest:
-                oldest_naive = oldest.replace(tzinfo=None) if isinstance(oldest, datetime) else datetime.fromisoformat(str(oldest)).replace(tzinfo=None)
-                mins_since_chk = int((now_naive - oldest_naive).total_seconds() / 60)
-                mins_restantes = SLA_WARN - mins_since_chk
-                sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
-            else:
-                mins_restantes = None
-                sla = 'unknown'
+            mins_restantes = None
+            sla = 'unknown'
 
         mins_since = mins_en_proceso  # alias para compatibilidad con dashboard
 

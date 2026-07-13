@@ -1664,9 +1664,9 @@ function renderPutawaySLA(){
   // Usar PW_DATA (BT_FBM_PUTAWAY) como fuente de movables pendientes
   const src = PW_DATA.length ? PW_DATA : [];
 
-  // Recalcular SLA en vivo para cada item (no depender del valor guardado en JSON)
+  // Recalcular SLA en vivo usando pw_created + 48h
   function liveSla(g){
-    const m = g.appointment ? Math.round((new Date(g.appointment.replace(' ','T')).getTime()-Date.now())/60000) : g.mins_restantes;
+    const m = liveMins(g);
     if(m==null) return 'unknown';
     return m<0?'over':m<120?'warn':'ok';
   }
@@ -1721,12 +1721,12 @@ function renderPutawaySLA(){
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
-  // Recalcula mins_restantes en vivo desde el campo appointment (evita desfase por datos viejos)
+  // Recalcula mins_restantes en vivo: pw_created + 48h - ahora (igual que WMS)
   function liveMins(g){
-    if(!g.appointment) return g.mins_restantes; // fallback al valor guardado
-    // appointment guardado como hora local Chile: "2026-07-13 10:00"
-    const apptDate = new Date(g.appointment.replace(' ','T'));
-    return Math.round((apptDate.getTime() - Date.now()) / 60000);
+    if(!g.pw_created) return g.mins_restantes;
+    const created = new Date(g.pw_created.replace(' ','T'));
+    const deadline = new Date(created.getTime() + 48*60*60*1000);
+    return Math.round((deadline.getTime() - Date.now()) / 60000);
   }
 
   // Agrupar por hora de appointment (igual que WMS)
