@@ -1773,16 +1773,48 @@ function pwSetView(v){
 
 function renderInboundIS(){
   const body=document.getElementById('chk-det-body');
-  const ntOnly=INB_DATA.filter(x=>x.ntb_units>0);
-  if(!ntOnly.length){
-    body.innerHTML=`<div style="color:#484f58;font-size:10px;padding:20px;text-align:center">Sin IS NT pendientes</div>`;
+
+  // IS con items pendientes de putaway en CHK_DATA (agrupados por IS)
+  const pendItems=CHK_DATA.filter(o=>o.sla!=='done'&&!o.movable);
+  const byIS={};
+  pendItems.forEach(o=>{
+    const id=o.is_id||o.inbound_id||'';
+    if(!id) return;
+    if(!byIS[id]) byIS[id]={is_id:id, skus:0, qty_chk:0, mins_restantes:o.mins_restantes, sla:o.sla};
+    byIS[id].skus++;
+    byIS[id].qty_chk+=o.qty_chk||0;
+    const slaPrio={over:0,warn:1,pw_active:2,ok:3,unknown:4};
+    if((slaPrio[o.sla]??5)<(slaPrio[byIS[id].sla]??5)) byIS[id].sla=o.sla;
+    if(o.mins_restantes!=null&&(byIS[id].mins_restantes===null||o.mins_restantes<byIS[id].mins_restantes))
+      byIS[id].mins_restantes=o.mins_restantes;
+  });
+
+  // Enriquecer con datos NT de INB_DATA
+  const inbIdx={};
+  INB_DATA.forEach(x=>{inbIdx[x.is_id]=x;});
+  const list=Object.values(byIS).map(g=>{
+    const inb=inbIdx[g.is_id]||{};
+    return {...g, ntb_units:inb.ntb_units||0, tb_units:inb.tb_units||0,
+      ntb_skus:inb.ntb_skus||0, appointment:inb.appointment||null,
+      arrival:inb.arrival||null, shipment_type:inb.shipment_type||''};
+  });
+
+  // NT primero, luego por SLA
+  const slaPrio={over:0,warn:1,pw_active:2,ok:3,unknown:4};
+  list.sort((a,b)=>{
+    const na=a.ntb_units>0?0:1, nb=b.ntb_units>0?0:1;
+    if(na!==nb) return na-nb;
+    const sa=slaPrio[a.sla]??5, sb=slaPrio[b.sla]??5;
+    if(sa!==sb) return sa-sb;
+    return (a.mins_restantes??999999)-(b.mins_restantes??999999);
+  });
+
+  if(!list.length){
+    body.innerHTML=`<div style="color:#484f58;font-size:10px;padding:20px;text-align:center">Sin IS pendientes de putaway</div>`;
     return;
   }
-  function fmtTipo(t){return t==='ftl'?'FTL':t==='pickup'?'Colecta':t==='supplier'?'Proveedor':(t||'—');}
-  function slaCol(s){return s==='over'?'#f85149':s==='warn'?'#e3b341':'#3fb950';}
-  function slaIco(s){return s==='over'?'🔴':s==='warn'?'⚠️':'🟢';}
 
-  // Separadores por hora de vencimiento (mismo concepto que vista movable)
+  function fmtTipo(t){return t==='ftl'?'FTL':t==='pickup'?'Colecta':t==='supplier'?'Proveedor':(t||'—');}
   function expiryLabel(mins){
     if(mins==null) return {key:'z',label:'Sin fecha',col:'#484f58',ico:'—'};
     if(mins<0) return {key:'a_ret',label:'Retrasado',col:'#f85149',ico:'🔴'};
@@ -1792,39 +1824,56 @@ function renderInboundIS(){
     return {key:`b_${exp.toDateString()}_${h}`,label:`${isToday?'Hoy':'Mañana'} ${h}:00`,col:mins<1440?'#e3b341':'#3fb950',ico:mins<1440?'⚠️':'🟢'};
   }
 
+  // Actualizar header con totales
+  const totalNTB=list.reduce((s,x)=>s+x.ntb_units,0);
+  const totalTB=list.reduce((s,x)=>s+x.tb_units,0);
+  const hdr=document.getElementById('chk-det-hdr');
+  hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
+    <span style="color:#e3b341;font-weight:700">📦 Putaway Pendiente por IS</span>
+    <span style="font-size:8px;color:#484f58">${list.length} IS · ${pendItems.length} SKUs</span>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:6px;font-size:9px;flex-wrap:wrap">
+    <span style="color:#58a6ff">NT ${totalNTB} u</span>
+    <span style="color:#484f58">TB ${totalTB} u</span>
+  </div>
+  <div style="display:flex;gap:4px;margin-top:8px">
+    <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;cursor:pointer">Por Movable</button>
+    <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid #58a6ff;background:#1a2a4a;color:#58a6ff;cursor:pointer">Por IS</button>
+  </div>`;
+
   let html='', lastKey='';
-  ntOnly.forEach(is=>{
+  list.forEach(is=>{
     const bk=expiryLabel(is.mins_restantes);
     if(bk.key!==lastKey){
       lastKey=bk.key;
-      const grpIS=ntOnly.filter(x=>expiryLabel(x.mins_restantes).key===bk.key);
-      const grpNTB=grpIS.reduce((s,x)=>s+x.ntb_units,0);
+      const grp=list.filter(x=>expiryLabel(x.mins_restantes).key===bk.key);
+      const gNTB=grp.reduce((s,x)=>s+x.ntb_units,0);
       html+=`<div style="padding:5px 10px;background:#161b22;border-bottom:1px solid #30363d;position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:6px">
         <span style="font-size:10px;font-weight:700;color:${bk.col}">${bk.ico} ${bk.label}</span>
-        <span style="font-size:8px;color:#484f58;margin-left:auto">${grpIS.length} IS · <span style="color:#58a6ff">${grpNTB} u NT</span></span>
+        <span style="font-size:8px;color:#484f58;margin-left:auto">${grp.length} IS${gNTB?` · <span style="color:#58a6ff">${gNTB} u NT</span>`:''}</span>
       </div>`;
     }
-    const appt=is.appointment?is.appointment.slice(5,16).replace('T',' '):'—';
-    const arr=is.arrival?is.arrival.slice(5,16).replace('T',' '):'—';
+    const isNT=is.ntb_units>0;
+    const appt=is.appointment?is.appointment.slice(5,16):'—';
+    const arr=is.arrival?is.arrival.slice(5,16):'—';
     const tipo=fmtTipo(is.shipment_type);
-    const pct=is.qty_declared>0?Math.round(is.qty_checkin/is.qty_declared*100):0;
-    html+=`<div style="padding:8px 10px;border-bottom:1px solid #21262d;border-left:3px solid #58a6ff">
+    html+=`<div style="padding:8px 10px;border-bottom:1px solid #21262d;border-left:3px solid ${isNT?'#58a6ff':'#30363d'}">
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        <span style="padding:1px 5px;border-radius:6px;background:#1a2a4a;color:#58a6ff;font-size:8px;border:1px solid #1f6feb;font-weight:700">NT</span>
+        ${isNT?`<span style="padding:1px 5px;border-radius:6px;background:#1a2a4a;color:#58a6ff;font-size:8px;border:1px solid #1f6feb;font-weight:700">NT</span>`:''}
         <span style="font-size:9px;color:#484f58">IS</span>
         <span style="font-family:monospace;font-size:11px;color:#e3b341;font-weight:700">${is.is_id}</span>
-        <span style="margin-left:auto;font-size:8px;color:#484f58;background:#21262d;padding:1px 5px;border-radius:4px">${tipo}</span>
+        ${tipo?`<span style="margin-left:auto;font-size:8px;color:#484f58;background:#21262d;padding:1px 5px;border-radius:4px">${tipo}</span>`:''}
       </div>
       <div style="display:flex;gap:8px;font-size:9px;margin-bottom:3px;flex-wrap:wrap">
-        <span style="color:#58a6ff;font-weight:700">${is.ntb_units} u NT</span>
-        ${is.tb_units?`<span style="color:#484f58">${is.tb_units} TB</span>`:''}
-        <span style="color:#8b949e">${is.ntb_skus} SKUs</span>
-        <span style="color:#8b949e;margin-left:auto">✓ ${pct}% checkin</span>
+        ${isNT?`<span style="color:#58a6ff;font-weight:700">${is.ntb_units} u NT</span>`:''}
+        ${is.tb_units?`<span style="color:#8b949e">${is.tb_units} u TB</span>`:''}
+        <span style="color:#484f58">${is.skus} SKUs pend.</span>
+        <span style="color:#484f58;margin-left:auto">${is.qty_chk} u checkin</span>
       </div>
-      <div style="display:flex;gap:10px;font-size:8px;color:#484f58">
-        <span>📅 Agendado: <span style="color:#8b949e">${appt}</span></span>
-        <span>🛬 Llegada: <span style="color:#8b949e">${arr}</span></span>
-      </div>
+      ${(appt!=='—'||arr!=='—')?`<div style="display:flex;gap:10px;font-size:8px;color:#484f58">
+        ${appt!=='—'?`<span>📅 <span style="color:#8b949e">${appt}</span></span>`:''}
+        ${arr!=='—'?`<span>🛬 <span style="color:#8b949e">${arr}</span></span>`:''}
+      </div>`:''}
     </div>`;
   });
   body.innerHTML=html;
