@@ -23,6 +23,8 @@ SLA_WARN = 48 * 60  # 48h en minutos
 def generate():
     now  = datetime.now(tz=ZoneInfo('America/Santiago'))
     tz   = ZoneInfo('America/Santiago')
+    from datetime import timezone as _tz
+    now_utc = datetime.now(tz=_tz.utc).replace(tzinfo=None)  # UTC naive para comparar con BQ DATETIME
     desde = (now - timedelta(days=60)).strftime('%Y-%m-%d')
 
     print(f"[{now.strftime('%H:%M:%S')}] Generando putaway pendiente {WH}...", flush=True)
@@ -88,22 +90,17 @@ def generate():
         is_nt = '-NT-' in (r.movable or '')
         inb   = is_data.get(r.is_id, None)
 
-        now_naive = now.replace(tzinfo=None)
-
-        # Tiempo en proceso: desde creación del movable en BT_FBM_PUTAWAY
+        # PW_CREATED_DATETIME está en UTC en BigQuery — usar now_utc para comparar
         pw_dt = r.pw_created_dt
         if pw_dt:
-            pw_naive = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
-            mins_en_proceso = int((now_naive - pw_naive).total_seconds() / 60)
-        else:
-            mins_en_proceso = None
-
-        # SLA = pw_created_dt + 48h - now  (igual que WMS: 48h desde creacion del movable)
-        if pw_dt:
-            deadline = pw_naive + timedelta(minutes=SLA_WARN)
-            mins_restantes = int((deadline - now_naive).total_seconds() / 60)
+            pw_utc = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
+            mins_en_proceso = int((now_utc - pw_utc).total_seconds() / 60)
+            deadline = pw_utc + timedelta(minutes=SLA_WARN)
+            mins_restantes = int((deadline - now_utc).total_seconds() / 60)
             sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
         else:
+            pw_utc = None
+            mins_en_proceso = None
             mins_restantes = None
             sla = 'unknown'
 

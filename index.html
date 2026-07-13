@@ -1721,10 +1721,10 @@ function renderPutawaySLA(){
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
-  // Recalcula mins_restantes en vivo: pw_created + 48h - ahora (igual que WMS)
+  // Recalcula mins_restantes en vivo: pw_created (UTC) + 48h - ahora
   function liveMins(g){
     if(!g.pw_created) return g.mins_restantes;
-    const created = new Date(g.pw_created.replace(' ','T'));
+    const created = new Date(g.pw_created.replace(' ','T') + 'Z'); // 'Z' = UTC
     const deadline = new Date(created.getTime() + 48*60*60*1000);
     return Math.round((deadline.getTime() - Date.now()) / 60000);
   }
