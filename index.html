@@ -1664,6 +1664,7 @@ function buscarSugerencia(){
 // ── Check-in & Putaway ───────────────────────────────────────────────────
 let CHK_DATA=[], CHK_SEL=null;
 let CHK_FILTER={q:'', pend:true, over:true, done:true, nt:false};
+let CHK_SLA_WARN=2880; // minutos — se actualiza desde el JSON (default 48h)
 let CHK_SORT='asc'; // 'asc' = más vencidos primero, 'desc' = más tiempo restante primero
 let CHK_AUTO=null;
 let INB_DATA=[];   // IS-level NT inbound
@@ -1683,6 +1684,7 @@ async function loadCheckin(){
     if(r1.ok){
       const d=await r1.json();
       CHK_DATA=d.items||[];
+      if(d.sla_warn_min) CHK_SLA_WARN=d.sla_warn_min;
       const s=d.stats||{};
       document.getElementById('ck-total').textContent=(s.total||0).toLocaleString();
       document.getElementById('ck-pw').textContent=(s.en_putaway||0).toLocaleString();
@@ -2130,13 +2132,28 @@ function fmtHoras(mins){
   const h=Math.floor(Math.abs(mins)/60), m=Math.abs(mins)%60;
   return h>0 ? `${h}h${m>0?m+'m':''}` : `${m}min`;
 }
+// Recalcula mins restantes desde chk_ts en tiempo real (chk_ts está en hora Chile)
+function chkLiveMins(o){
+  if(o.sla==='done') return null;
+  if(!o.chk_ts) return o.mins_restantes;
+  // chk_ts es hora Chile (sin tz) — usamos offset actual del browser
+  const chkMs = new Date(o.chk_ts.replace(' ','T')).getTime();
+  const offsetMs = new Date().getTimezoneOffset() * 60000; // offset local browser
+  // Ajuste: forzar interpretación como America/Santiago (UTC-4 invierno / UTC-3 verano)
+  // Detectamos el offset real desde el browser
+  const chkUtcMs = chkMs + offsetMs;
+  const deadlineMs = chkUtcMs + CHK_SLA_WARN * 60000;
+  return Math.round((deadlineMs - Date.now()) / 60000);
+}
+
 function chkSlaLabel(o){
-  const sla=o.sla, rest=o.mins_restantes;
-  if(sla==='done')       return `<span class="sla-badge sla-done">✓ Listo</span>`;
-  if(sla==='pw_active'){
+  if(o.sla==='done') return `<span class="sla-badge sla-done">✓ Listo</span>`;
+  if(o.sla==='pw_active'){
     const durMin = o.mins_pw_dur!=null ? o.mins_pw_dur : (o.mins_since_chk||0);
     return `<span class="sla-badge sla-pw-active">📦 Putaway ${fmtHoras(durMin)}</span>`;
   }
+  const rest = chkLiveMins(o);
+  const sla = rest==null?'unknown': rest<0?'over': rest<120?'warn':'ok';
   if(sla==='over'){
     const venc = rest!=null ? Math.abs(rest) : (o.mins_since_chk||0);
     return `<span class="sla-badge sla-over">🔴 Vencido ${fmtHoras(venc)}</span>`;
@@ -2153,9 +2170,10 @@ function chkSlaLabel(o){
 function chkRender(){
   const {q, pend, over, done, nt} = CHK_FILTER;
   const list = CHK_DATA.filter(o=>{
-    if(o.sla==='done'      && !done) return false;
-    if(o.sla==='over'      && !over) return false;
-    if((o.sla==='ok'||o.sla==='warn'||o.sla==='unknown'||o.sla==='pw_active') && !pend) return false;
+    const liveSlaVal = o.sla==='done'?'done': o.sla==='pw_active'?'pw_active': (()=>{const r=chkLiveMins(o); return r==null?'unknown':r<0?'over':r<120?'warn':'ok';})();
+    if(liveSlaVal==='done'      && !done) return false;
+    if(liveSlaVal==='over'      && !over) return false;
+    if((liveSlaVal==='ok'||liveSlaVal==='warn'||liveSlaVal==='unknown'||liveSlaVal==='pw_active') && !pend) return false;
     if(nt && !o.is_nt) return false;
     if(q && !o.sku.toLowerCase().includes(q) && !(o.inbound_id||'').includes(q) &&
        !(o.seller||'').toLowerCase().includes(q) &&
