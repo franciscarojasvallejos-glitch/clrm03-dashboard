@@ -350,12 +350,13 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
     <button class="chk-filter-btn on f-pend" id="chk-f-pend" onclick="chkToggle('pend')">⏳ Pendientes</button>
     <button class="chk-filter-btn on f-over" id="chk-f-over" onclick="chkToggle('over')">🔴 Sobre SLA</button>
     <button class="chk-filter-btn on f-done" id="chk-f-done" onclick="chkToggle('done')">✓ Completados</button>
-    <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')">🏷 Solo NT</button>
+    <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')">🏷 Solo NT (<span id="ck-nt-btn">—</span>)</button>
     <div id="chk-kpis">
       <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#3483FA">—</div><div class="chk-kl">Total</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#3483FA">—</div><div class="chk-kl">En Putaway</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-pend" style="color:#F5A623">—</div><div class="chk-kl">Pendientes</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-over" style="color:#F23D4F">—</div><div class="chk-kl">Sobre SLA</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-nt" style="color:#3483FA">—</div><div class="chk-kl">No Toteables</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-done" style="color:#00A650">—</div><div class="chk-kl">Completos</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-upd" style="color:#999999;font-size:9px">—</div><div class="chk-kl">Actualizado</div></div>
     </div>
@@ -1647,6 +1648,9 @@ async function loadCheckin(){
       document.getElementById('ck-over').textContent=(s.over_sla||0).toLocaleString();
       document.getElementById('ck-done').textContent=(s.done||0).toLocaleString();
       document.getElementById('ck-upd').textContent=d.updated||'—';
+      const ntCount=CHK_DATA.filter(o=>o.is_nt).length;
+      document.getElementById('ck-nt').textContent=ntCount.toLocaleString();
+      const ntBtn=document.getElementById('ck-nt-btn'); if(ntBtn) ntBtn.textContent=ntCount;
     }
     if(r2.ok){ const d=await r2.json(); INB_DATA=d.shipments||[]; }
     if(r3.ok){
