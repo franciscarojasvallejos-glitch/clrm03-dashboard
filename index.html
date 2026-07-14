@@ -60,6 +60,9 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
 .bl-section{margin-bottom:6px}
 .bl-tabs{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
 .bl-tab-btn{background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;color:#666666;cursor:pointer;font-size:10px;font-weight:600;padding:3px 10px;transition:all .15s}
+.rank-sort-btn{background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;color:#666666;cursor:pointer;font-size:9px;padding:2px 8px;transition:all .15s}
+.rank-sort-btn:hover{background:#D9D9D9}
+.rank-sort-on{background:#3483FA18;border-color:#3483FA;color:#3483FA;font-weight:700}
 .bl-tab-btn:hover{background:#D9D9D9}
 .bl-tab-active{background:#D9D9D9;border-color:currentColor}
 .bl-tab-content{padding:2px 0}
@@ -953,43 +956,82 @@ function abrirSlotModal(slotId, bayKey){
   modal.classList.add('vis');
 }
 
-// ── Ranking de ocupación ──────────────────────────────────────────────────
+// ── Buscador de ubicaciones ───────────────────────────────────────────────
+let _rankSort='az'; // 'az','za','occ','free'
+
 function renderRanking(){
   const body=document.getElementById('det-body');
   const dhdr=document.getElementById('det-hdr');
-  dhdr.textContent='Ranking · Máxima Ocupación';
+  dhdr.textContent='Buscador de Ubicaciones';
 
-  const entries=Object.entries(bayMap).map(([key,b])=>{
+  body.innerHTML=`
+    <div style="padding:6px 8px;border-bottom:1px solid #F5F5F5">
+      <input id="rank-q" type="text" placeholder="Ej: RK-0-005, BL-0-001…" autocomplete="off"
+        style="width:100%;background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;font-size:10px;
+               font-family:monospace;padding:4px 8px;outline:none;color:#333333"
+        oninput="rankFilter()" />
+      <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
+        <button onclick="rankSetSort('az')"  id="rsrt-az"  class="rank-sort-btn rank-sort-on">A→Z</button>
+        <button onclick="rankSetSort('za')"  id="rsrt-za"  class="rank-sort-btn">Z→A</button>
+        <button onclick="rankSetSort('occ')" id="rsrt-occ" class="rank-sort-btn">Mayor ocup.</button>
+        <button onclick="rankSetSort('free')"id="rsrt-free"class="rank-sort-btn">Más libres</button>
+      </div>
+      <div id="rank-meta" style="font-size:9px;color:#999999;margin-top:4px"></div>
+    </div>
+    <div id="rank-list" style="overflow-y:auto;max-height:calc(100vh - 260px)"></div>`;
+
+  rankFilter();
+}
+
+function rankSetSort(s){
+  _rankSort=s;
+  document.querySelectorAll('.rank-sort-btn').forEach(b=>b.classList.remove('rank-sort-on'));
+  const el=document.getElementById('rsrt-'+s);
+  if(el) el.classList.add('rank-sort-on');
+  rankFilter();
+}
+
+function rankFilter(){
+  const q=(document.getElementById('rank-q')?.value||'').toLowerCase().trim();
+  let entries=Object.entries(bayMap).map(([key,b])=>{
     const occ=b.slots.filter(s=>s.skus.length>0).length;
     const pct=b.n_slots>0?Math.round(occ/b.n_slots*100):0;
-    return {key,b,occ,pct};
-  }).filter(e=>e.pct>0).sort((a,b2)=>b2.pct-a.pct||b2.occ-a.occ);
-
-  const top=entries.slice(0,50);
-
-  const rows=top.map((e,i)=>{
-    const {key,b,occ,pct}=e;
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:#999999">${String(i+1).padStart(2,'0')}</span>`;
-    const bar=`<div style="flex:1;height:4px;background:#F5F5F5;border-radius:2px;overflow:hidden;min-width:40px">
-      <div style="height:100%;width:${pct}%;background:${pct>=90?'#F23D4F':pct>=70?'#F5A623':'#00A650'};border-radius:2px"></div>
-    </div>`;
     const addr=`${b.zone}-0-${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
-    const pctColor=pct>=90?'#F23D4F':pct>=70?'#F5A623':'#00A650';
-    return `<div onclick="rankClick('${key}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;
-      border-bottom:1px solid #F5F5F5;transition:background .1s" onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
-      <span style="font-size:12px;min-width:22px;text-align:center">${medal}</span>
-      <span style="font-family:monospace;font-size:9px;color:#3483FA;min-width:90px">${addr}</span>
+    return {key,b,occ,pct,addr};
+  });
+
+  if(q) entries=entries.filter(e=>e.addr.toLowerCase().includes(q)||e.key.toLowerCase().includes(q));
+
+  if(_rankSort==='az')   entries.sort((a,b)=>a.addr.localeCompare(b.addr));
+  if(_rankSort==='za')   entries.sort((a,b)=>b.addr.localeCompare(a.addr));
+  if(_rankSort==='occ')  entries.sort((a,b)=>b.pct-a.pct||b.occ-a.occ);
+  if(_rankSort==='free') entries.sort((a,b)=>a.pct-b.pct||(a.b.n_slots-a.occ)-(b.b.n_slots-b.occ));
+
+  const meta=document.getElementById('rank-meta');
+  if(meta) meta.textContent=`${entries.length.toLocaleString()} bays encontrados`;
+
+  const list=document.getElementById('rank-list');
+  if(!list) return;
+
+  const visible=entries.slice(0,200);
+  list.innerHTML=visible.map(({key,b,occ,pct,addr})=>{
+    const pctColor=pct>=90?'#F23D4F':pct>=70?'#F5A623':pct>0?'#00A650':'#999999';
+    const bar=`<div style="flex:1;height:4px;background:#F5F5F5;border-radius:2px;overflow:hidden;min-width:40px">
+      <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px"></div></div>`;
+    return `<div onclick="rankClick('${key}')" style="display:flex;align-items:center;gap:8px;padding:5px 8px;
+      border-bottom:1px solid #F5F5F5;cursor:pointer;transition:background .1s"
+      onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
+      <span style="font-family:monospace;font-size:9px;color:#3483FA;min-width:94px">${addr}</span>
       ${bar}
       <span style="font-size:10px;font-weight:700;color:${pctColor};min-width:34px;text-align:right">${pct}%</span>
       <span style="font-size:8px;color:#999999;white-space:nowrap">${occ}/${b.n_slots}</span>
     </div>`;
   }).join('');
 
-  body.innerHTML=`
-    <div style="font-size:9px;color:#999999;padding:6px 8px;border-bottom:1px solid #F5F5F5;margin-bottom:4px">
-      Top 50 ubicaciones por % de slots ocupados · Click para ver detalle
-    </div>
-    ${rows||'<div style="color:#666666;font-size:10px;text-align:center;margin-top:20px">Sin datos de ocupación</div>'}`;
+  if(entries.length>200){
+    list.innerHTML+=`<div style="font-size:9px;color:#999999;text-align:center;padding:8px">
+      Mostrando 200 de ${entries.length} — usa el buscador para filtrar</div>`;
+  }
 }
 
 function rankClick(key){
