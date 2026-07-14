@@ -350,7 +350,7 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
     <button class="chk-filter-btn on f-pend" id="chk-f-pend" onclick="chkToggle('pend')">⏳ Pendientes</button>
     <button class="chk-filter-btn on f-over" id="chk-f-over" onclick="chkToggle('over')">🔴 Sobre SLA</button>
     <button class="chk-filter-btn on f-done" id="chk-f-done" onclick="chkToggle('done')">✓ Completados</button>
-    <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')">🏷 Solo NT (<span id="ck-nt-btn">—</span>)</button>
+    <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')" style="color:#3483FA;border-color:#3483FA;font-weight:700">📦 Solo NT (<span id="ck-nt-btn">—</span>)</button>
     <div id="chk-kpis">
       <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#3483FA">—</div><div class="chk-kl">Total</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#3483FA">—</div><div class="chk-kl">En Putaway</div></div>
@@ -2135,8 +2135,9 @@ function chkRender(){
     const cat=CATALOG[o.sku]||{};
     const title=cat.title||'';
     const shortTitle=title.length>28?title.slice(0,28)+'…':title;
-    return `<tr class="${CHK_SEL===o.sku+o.chk_ts?'chk-sel':''}" onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
-      <td>${chkSlaLabel(o)}</td>
+    const ntRow=o.is_nt?'background:#EBF2FF;border-left:3px solid #3483FA;':'';
+    return `<tr class="${CHK_SEL===o.sku+o.chk_ts?'chk-sel':''}" style="${ntRow}" onclick="chkSelItem(${JSON.stringify(o).replace(/"/g,'&quot;')})">
+      <td>${chkSlaLabel(o)}${o.is_nt?'<span style="display:inline-block;margin-left:4px;font-size:8px;padding:1px 4px;border-radius:3px;background:#3483FA;color:#fff;font-weight:700;vertical-align:middle">NT</span>':''}</td>
       <td><span style="font-family:monospace;font-size:10px;color:${o.en_putaway?'#3483FA':'#3483FA'}">${o.sku}</span></td>
       <td><span style="color:#333333;font-size:9px" title="${title}">${shortTitle||'—'}</span></td>
       <td style="font-weight:700;color:#F5A623;text-align:center">${o.qty_chk||o.qty_dec||0}</td>
