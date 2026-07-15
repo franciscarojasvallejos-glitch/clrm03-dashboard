@@ -278,7 +278,11 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
   <div id="main">
     <div id="mapwrap"></div>
     <div id="det">
-      <div id="det-hdr">Detalle de Ubicación</div>
+      <div id="det-hdr" style="display:flex;align-items:center;gap:6px">
+        <button id="det-back" onclick="renderRanking()" title="Volver al buscador"
+          style="display:none;background:none;border:none;cursor:pointer;color:#3483FA;font-size:14px;padding:0 2px;line-height:1">&#8592;</button>
+        <span id="det-hdr-txt">Detalle de Ubicación</span>
+      </div>
       <div id="det-body"><div style="color:#666666;font-size:10px;text-align:center;margin-top:20px">Click en una celda</div></div>
     </div>
   </div>
@@ -962,7 +966,8 @@ let _rankSort='az'; // 'az','za','occ','free'
 function renderRanking(){
   const body=document.getElementById('det-body');
   const dhdr=document.getElementById('det-hdr');
-  dhdr.textContent='Buscador de Ubicaciones';
+  const dhdrTxt=document.getElementById('det-hdr-txt'); if(dhdrTxt) dhdrTxt.textContent='Buscador de Ubicaciones';
+  const detBack=document.getElementById('det-back'); if(detBack) detBack.style.display='none';
 
   body.innerHTML=`
     <div style="padding:6px 8px;border-bottom:1px solid #F5F5F5">
@@ -1054,7 +1059,8 @@ function renderDetail(b,key){
   if(!b){
     const [zone,aisleStr,bayStr]=key.split('-');
     const aisle=parseInt(aisleStr),bay=parseInt(bayStr);
-    dhdr.textContent=`${zone} · Pasillo ${aisle} · Bay ${bay}`;
+    const dhdrTxt=document.getElementById('det-hdr-txt'); if(dhdrTxt) dhdrTxt.textContent=`${zone} · Pasillo ${aisle} · Bay ${bay}`;
+    const detBack=document.getElementById('det-back'); if(detBack) detBack.style.display='inline';
     body.innerHTML=`
       <div class="det-bay">${zone}-0-${String(aisle).padStart(3,'0')}-${String(bay).padStart(3,'0')}-xx-xx</div>
       <div style="margin-top:16px;text-align:center">
@@ -1064,7 +1070,8 @@ function renderDetail(b,key){
       </div>`;
     return;
   }
-  dhdr.textContent=`${b.zone} · Pasillo ${b.aisle} · Bay ${b.bay}`;
+  const dhdrTxt2=document.getElementById('det-hdr-txt'); if(dhdrTxt2) dhdrTxt2.textContent=`${b.zone} · Pasillo ${b.aisle} · Bay ${b.bay}`;
+  const detBack2=document.getElementById('det-back'); if(detBack2) detBack2.style.display='inline';
   const total=b.slots.reduce((a,s)=>a+s.skus.length,0);
   const slotsOcc2=b.slots.filter(s=>s.skus.length>0).length;
   const pct=Math.round(slotsOcc2/b.n_slots*100);
