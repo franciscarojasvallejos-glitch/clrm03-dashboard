@@ -1732,15 +1732,28 @@ function renderPutawaySLA(){
   }
 
   // Totales globales en vivo
-  const over=src.filter(g=>liveSla(g)==='over').length;
-  const warn=src.filter(g=>liveSla(g)==='warn').length;
-  const active=src.filter(g=>g.pw_status==='WAITING_FINISH').length;
-  const ntCount=src.filter(g=>g.is_nt).length;
+  const over   = src.filter(g=>liveSla(g)==='over').length;
+  const warn   = src.filter(g=>liveSla(g)==='warn').length;
+  const active = src.filter(g=>g.pw_status==='WAITING_FINISH').length;
+  const ntCount= src.filter(g=>g.is_nt).length;
 
-  // Aplicar filtro SLA usando liveSla
-  const filtered = PW_SLA_FILTER==='all' ? src
-    : PW_SLA_FILTER==='nt'   ? src.filter(g=>g.is_nt)
-    : src.filter(g=>liveSla(g)===PW_SLA_FILTER);
+  // Rangos de SLA para botones horarios
+  const slaBands=[
+    {key:'over',  label:'🔴 Vencido',  col:'#F23D4F', fn:g=>liveMins(g)<0},
+    {key:'h2',    label:'⚡ <2h',       col:'#d07030', fn:g=>{const m=liveMins(g);return m>=0&&m<120;}},
+    {key:'h8',    label:'🟠 2–8h',      col:'#F5A623', fn:g=>{const m=liveMins(g);return m>=120&&m<480;}},
+    {key:'h24',   label:'🟡 8–24h',     col:'#c8a000', fn:g=>{const m=liveMins(g);return m>=480&&m<1440;}},
+    {key:'h24p',  label:'🟢 +24h',      col:'#00A650', fn:g=>{const m=liveMins(g);return m>=1440;}},
+    {key:'nt',    label:'📦 NT',        col:'#3483FA', fn:g=>g.is_nt},
+  ];
+
+  // Búsqueda por texto
+  const pwQ=(document.getElementById('pw-search')?.value||'').toLowerCase().trim();
+
+  // Aplicar filtro SLA + búsqueda
+  let filtered = PW_SLA_FILTER==='all' ? src
+    : (slaBands.find(b=>b.key===PW_SLA_FILTER)?.fn ? src.filter(slaBands.find(b=>b.key===PW_SLA_FILTER).fn) : src);
+  if(pwQ) filtered=filtered.filter(g=>(g.movable||'').toLowerCase().includes(pwQ)||(g.is_id||'').includes(pwQ)||(g.seller||'').toLowerCase().includes(pwQ));
 
   const groups = [...filtered].sort((a,b)=>{
     const na=a.is_nt?0:1, nb=b.is_nt?0:1;
@@ -1757,26 +1770,43 @@ function renderPutawaySLA(){
     return `<button onclick="pwSetSLA('${val}')" style="font-size:8px;padding:2px 6px;border-radius:10px;border:1px solid ${active?col:'#D9D9D9'};background:${active?col+'22':'transparent'};color:${active?col:'#666666'};cursor:pointer;white-space:nowrap">${label}</button>`;
   }
 
-  hdr.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
-    <span style="color:#F5A623;font-weight:700">📦 Putaway por Guardar</span>
+  function slaBtn(val, label, col){
+    const on=PW_SLA_FILTER===val;
+    return `<button onclick="pwSetSLA('${val}')" style="font-size:9px;padding:3px 8px;border-radius:10px;border:1px solid ${on?col:'#D9D9D9'};background:${on?col+'22':'transparent'};color:${on?col:'#666666'};cursor:pointer;white-space:nowrap;font-weight:${on?'700':'400'}">${label}</button>`;
+  }
+
+  // Contar por banda
+  const bandCounts={};
+  slaBands.forEach(b=>{ bandCounts[b.key]=src.filter(b.fn).length; });
+
+  hdr.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+    <span style="color:#F5A623;font-weight:700;font-size:11px">📦 Putaway por Guardar</span>
     <span style="font-size:8px;color:#999999">${src.length} movables · ${src.reduce((s,g)=>s+(g.sku_count||0),0)} SKUs</span>
   </div>
-  ${PW_UPDATED?`<div style="font-size:8px;color:#999999;margin-top:2px">Ultima actualizacion: <b style="color:#666666">${PW_UPDATED}</b></div>`:''}
+  ${PW_UPDATED?`<div style="font-size:8px;color:#999999;margin-top:1px">Actualizado: <b>${PW_UPDATED}</b></div>`:''}
 
-  <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-    ${slaBtn('all','Todos','#666666')}
-    ${slaBtn('over','🔴 '+over+' Vencidos','#F23D4F')}
-    ${slaBtn('warn','⚠️ '+warn+' En riesgo','#F5A623')}
-    ${slaBtn('ok','🟢 OK','#00A650')}
-    ${slaBtn('nt','NT '+ntCount,'#3483FA')}
+  <input id="pw-search" type="text" placeholder="Buscar movable, IS, seller…" autocomplete="off"
+    oninput="renderPutawaySLA()"
+    style="width:100%;margin-top:6px;background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;
+           font-size:10px;font-family:monospace;padding:4px 8px;outline:none;color:#333333"/>
+
+  <div style="margin-top:6px">
+    <div style="font-size:9px;color:#999999;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Filtrar por SLA</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      ${slaBtn('all',`Todos (${src.length})`,'#666666')}
+      ${slaBands.map(b=>slaBtn(b.key,`${b.label} (${bandCounts[b.key]})`,b.col)).join('')}
+    </div>
   </div>
-  <div style="font-size:8px;color:#999999;margin-top:4px">${groups.length} mostrando · ${totalSkus} SKUs · ${active} en proceso
+
+  <div style="font-size:8px;color:#999999;margin-top:5px">
+    ${groups.length} mostrando · ${totalSkus} SKUs · ${active} en proceso
     ${PW_MOVABLE_FILTER?` · <button onclick="pwClearFilter()" style="font-size:8px;padding:1px 5px;border-radius:6px;background:#D9D9D9;color:#333333;border:none;cursor:pointer">✕ Limpiar</button>`:''}
   </div>
-  <div style="display:flex;gap:4px;margin-top:6px">
+  <div style="display:flex;gap:4px;margin-top:5px">
     <button onclick="pwSetView('movable')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='movable'?'#3483FA':'#D9D9D9'};background:${PW_VIEW==='movable'?'#EBF2FF':'transparent'};color:${PW_VIEW==='movable'?'#3483FA':'#666666'};cursor:pointer">Por Movable</button>
     <button onclick="pwSetView('is')" style="flex:1;font-size:9px;padding:3px 0;border-radius:6px;border:1px solid ${PW_VIEW==='is'?'#3483FA':'#D9D9D9'};background:${PW_VIEW==='is'?'#EBF2FF':'transparent'};color:${PW_VIEW==='is'?'#3483FA':'#666666'};cursor:pointer">Por IS</button>
-    <button onclick="pwToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #D9D9D9;background:transparent;color:#666666;cursor:pointer">${PW_SORT==='asc'?'↑ Mayor':'↓ Menor'}</button>
+    <button onclick="pwToggleSort()" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #D9D9D9;background:transparent;color:#666666;cursor:pointer">${PW_SORT==='asc'?'↑ Urgente':'↓ Holgado'}</button>
   </div>`;
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
