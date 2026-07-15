@@ -188,9 +188,8 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
 .chk-kv{font-size:15px;font-weight:700}
 .chk-kl{font-size:8px;color:#999999;text-transform:uppercase;letter-spacing:.4px}
 #chk-body{flex:1;overflow:hidden;display:flex;min-height:0}
-#chk-list{flex:1;overflow-y:auto;display:flex;flex-direction:column}
-#chk-list::-webkit-scrollbar{width:5px}#chk-list::-webkit-scrollbar-thumb{background:#D9D9D9}
-#chk-detail{width:320px;flex-shrink:0;border-left:1px solid #D9D9D9;overflow-y:auto;background:#FFFFFF;display:flex;flex-direction:column}
+#chk-list{display:none}
+#chk-detail{flex:1;border-left:none;overflow-y:auto;background:#FFFFFF;display:flex;flex-direction:column}
 #chk-det-hdr{padding:10px 12px;font-size:11px;font-weight:700;border-bottom:1px solid #D9D9D9;position:sticky;top:0;background:#FFFFFF;z-index:1}
 #chk-det-body{padding:10px 12px;flex:1}
 #chk-tbl{width:100%;border-collapse:collapse;font-size:10px}
@@ -247,7 +246,7 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
 <div id="dash-tabs">
   <button class="dash-tab active" onclick="switchTab('mapa')">🗺️ Mapa de Ocupación</button>
   <button class="dash-tab" onclick="switchTab('inv')">📦 Inventario SKU</button>
-  <button class="dash-tab" onclick="switchTab('chk')">📥 Check-in &amp; Putaway</button>
+  <button class="dash-tab" onclick="switchTab('chk')">📦 Putaway</button>
   <button class="dash-tab tab-sug" onclick="switchTab('sug')">📍 Sugerencias de Guardado</button>
 </div>
 <div id="mapa-view">
@@ -352,15 +351,9 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
 </div>
 <div id="chk-view">
   <div id="chk-toolbar">
-    <input id="chk-search" type="text" placeholder="Buscar SKU, shipment, usuario…" oninput="chkFiltrar()">
-    <button id="chk-sort-btn" onclick="chkToggleSort()" title="Ordenar por SLA" style="font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid #D9D9D9;background:transparent;color:#666666;cursor:pointer;white-space:nowrap">↑ Mayor</button>
-    <button class="chk-filter-btn on f-pend" id="chk-f-pend" onclick="chkToggle('pend')">⏳ Pendientes</button>
-    <button class="chk-filter-btn on f-over" id="chk-f-over" onclick="chkToggle('over')">🔴 Sobre SLA</button>
-    <button class="chk-filter-btn on f-done" id="chk-f-done" onclick="chkToggle('done')">✓ Completados</button>
-    <button class="chk-filter-btn f-nt" id="chk-f-nt" onclick="chkToggle('nt')" style="color:#3483FA;border-color:#3483FA;font-weight:700">📦 Solo NT (<span id="ck-nt-btn">—</span>)</button>
     <div id="chk-kpis">
-      <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#3483FA">—</div><div class="chk-kl">Total</div></div>
-      <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#3483FA">—</div><div class="chk-kl">En Putaway</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-total" style="color:#3483FA">—</div><div class="chk-kl">Movables</div></div>
+      <div class="chk-kpi"><div class="chk-kv" id="ck-pw" style="color:#3483FA">—</div><div class="chk-kl">En Proceso</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-pend" style="color:#F5A623">—</div><div class="chk-kl">Pendientes</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-over" style="color:#F23D4F">—</div><div class="chk-kl">Sobre SLA</div></div>
       <div class="chk-kpi"><div class="chk-kv" id="ck-nt" style="color:#3483FA">—</div><div class="chk-kl">No Toteables</div></div>
