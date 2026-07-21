@@ -1,0 +1,52 @@
+name: Actualizar datos CLRM03
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # cada 5 minutos
+  workflow_dispatch:          # también permite correrlo manualmente desde GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4        # si supera 4 min, algo falló → no bloquea el siguiente ciclo
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: pip install google-cloud-bigquery==3.41.0 db-dtypes pyarrow
+
+      - name: Autenticar BigQuery (Service Account)
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/sa_key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json" >> $GITHUB_ENV
+
+      - name: Generar putaway JSON
+        run: python generar_putaway_json.py
+
+      - name: Generar ocupacion JSON
+        run: python fetch_ocupacion.py
+
+      - name: Generar MZ heatmap JSON
+        run: python generar_mz_json.py
+
+      - name: Commit y push datos actualizados
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          # Solo hace commit si hay cambios reales
+          git diff --staged --quiet || git commit -m "data: auto $(date +'%Y-%m-%d %H:%M' -d 'TZ=\"America/Santiago\"')"
+          git push
