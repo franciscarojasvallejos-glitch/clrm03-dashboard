@@ -33,6 +33,12 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
 .zone-hdr:hover{background:#D9D9D9}
 .zone-body{overflow:hidden}
 .zone-body-inner{padding:4px 0}
+.aisle-filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:4px 6px;border-bottom:1px solid #F0F0F0;margin-bottom:4px}
+.aisle-chip{padding:1px 6px;font-size:9px;font-family:monospace;border:1px solid #D9D9D9;border-radius:10px;background:#FFFFFF;color:#666666;cursor:pointer;white-space:nowrap;transition:all .12s}
+.aisle-chip:hover{border-color:#3483FA;color:#3483FA}
+.aisle-chip.on{background:#3483FA;border-color:#3483FA;color:#FFFFFF;font-weight:700}
+.aisle-chip-all{padding:1px 8px;font-size:9px;border:1px solid #999999;border-radius:10px;background:#F5F5F5;color:#666666;cursor:pointer;font-weight:700}
+.aisle-chip-all:hover{background:#E0E0E0}
 .zone-section.collapsed .zone-body{display:none}
 .zone-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
 .bay-axis-row{display:flex;align-items:flex-end;height:14px;margin-bottom:1px}
@@ -459,6 +465,18 @@ function toggleViewMode(){
 }
 let blTab='Handstack';
 let openZones=new Set(ZONE_DEFS.map(z=>z.id));
+let aisleSel={}; // zoneId → Set<aisle> (vacío = todos)
+
+function toggleAisle(zid, aisle){
+  if(!aisleSel[zid]) aisleSel[zid]=new Set();
+  const s=aisleSel[zid];
+  if(s.has(aisle)) s.delete(aisle); else s.add(aisle);
+  buildGrid();
+}
+function setAllAisles(zid){
+  aisleSel[zid]=new Set();
+  buildGrid();
+}
 
 // ── Auto-refresh ──────────────────────────────────────────────────────────
 const AUTO_INTERVAL=60;
@@ -744,17 +762,31 @@ function buildGrid(){
   ZONE_DEFS.forEach(zd=>{
     const gridW2=Math.max(zd.maxBay*(CELL_MIN+1),200);
     const collapsed=!openZones.has(zd.id)?'collapsed':'';
+    const selSet=aisleSel[zd.id]||new Set();
+    const activeAisles=zd.aisles.filter(a=>BAYS.some(b=>b.zone===zd.zp&&b.aisle===a));
+
     parts.push(`<div class="zone-section ${collapsed}" id="zs-${zd.id}">`);
     parts.push(`<div class="zone-hdr" onclick="toggleZone('${zd.id}')"><span style="color:${zd.color}">${zd.label}</span><span style="font-weight:400;color:#999999;font-size:9px;margin-left:auto">${zoneMeta(zd)}</span></div>`);
+
+    // ── Barra de filtro de pasillos ───────────────────────────────────────
+    parts.push(`<div class="aisle-filter-bar">`);
+    parts.push(`<button class="aisle-chip-all" onclick="event.stopPropagation();setAllAisles('${zd.id}')">Todos</button>`);
+    activeAisles.forEach(a=>{
+      const on=selSet.has(a)?'on':'';
+      parts.push(`<button class="aisle-chip ${on}" onclick="event.stopPropagation();toggleAisle('${zd.id}',${a})">P${String(a).padStart(3,'0')}</button>`);
+    });
+    parts.push(`</div>`);
+
     parts.push(`<div class="zone-body"><div class="zone-body-inner"><div class="zone-scroll">`);
     parts.push(`<div class="bay-axis-row"><div class="axis-lbl-spacer"></div>`);
     parts.push(`<div class="axis-inner" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px;flex:1">`);
     for(let b=zd.step;b<=zd.maxBay;b+=zd.step) parts.push(`<div class="axis-tick" style="grid-column:${b}">${b}</div>`);
     parts.push(`</div></div>`);
     zd.aisles.forEach(aisle=>{
+      // Filtrar por pasillo seleccionado (vacío = todos)
+      if(selSet.size>0 && !selSet.has(aisle)) return;
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      // Una fila por NIVEL (agrega todas las posiciones del bay×nivel)
       const aisleLevels=new Set();
       baysInAisle.forEach(b=>b.slots.forEach(s=>aisleLevels.add(s.level)));
       const sortedLevels=[...aisleLevels].sort((a,b)=>b-a);
