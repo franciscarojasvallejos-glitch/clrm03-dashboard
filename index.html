@@ -1111,7 +1111,11 @@ function rankFilter(){
     return {key,b,occ,pct,addr};
   });
 
-  if(q) entries=entries.filter(e=>e.addr.toLowerCase().includes(q)||e.key.toLowerCase().includes(q));
+  if(q) entries=entries.filter(e=>
+    e.addr.toLowerCase().includes(q) ||
+    e.key.toLowerCase().includes(q) ||
+    e.b.slots.some(s=>s.id.toLowerCase().includes(q))
+  );
 
   if(_rankSort==='az')   entries.sort((a,b)=>a.addr.localeCompare(b.addr));
   if(_rankSort==='za')   entries.sort((a,b)=>b.addr.localeCompare(a.addr));
