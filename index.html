@@ -1129,13 +1129,17 @@ function rankFilter(){
     const pctColor=pct>=90?'#F23D4F':pct>=70?'#F5A623':pct>0?'#00A650':'#999999';
     const bar=`<div style="flex:1;height:4px;background:#F5F5F5;border-radius:2px;overflow:hidden;min-width:40px">
       <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px"></div></div>`;
-    return `<div onclick="rankClick('${key}')" style="display:flex;align-items:center;gap:8px;padding:5px 8px;
-      border-bottom:1px solid #F5F5F5;cursor:pointer;transition:background .1s"
-      onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
-      <span style="font-family:monospace;font-size:9px;color:#3483FA;min-width:94px">${addr}</span>
-      ${bar}
-      <span style="font-size:10px;font-weight:700;color:${pctColor};min-width:34px;text-align:right">${pct}%</span>
-      <span style="font-size:8px;color:#999999;white-space:nowrap">${occ}/${b.n_slots}</span>
+    // Expandible: muestra slots individuales al hacer click
+    return `<div style="border-bottom:1px solid #F0F0F0">
+      <div onclick="rankToggle('${key}',this)" style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;transition:background .1s"
+        onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
+        <span style="font-size:9px;color:#AAAAAA;width:10px">▶</span>
+        <span style="font-family:monospace;font-size:9px;color:#3483FA;min-width:90px">${addr}</span>
+        ${bar}
+        <span style="font-size:10px;font-weight:700;color:${pctColor};min-width:34px;text-align:right">${pct}%</span>
+        <span style="font-size:8px;color:#999999;white-space:nowrap">${occ}/${b.n_slots}</span>
+      </div>
+      <div id="rank-slots-${key.replace(/-/g,'_')}" style="display:none;padding:0 8px 6px 24px;background:#FAFAFA"></div>
     </div>`;
   }).join('');
 
@@ -1152,6 +1156,50 @@ function rankClick(key){
   renderDetail(bayMap[selKey],selKey);
   const el=document.querySelector(`[data-key="${CSS.escape(selKey)}"]`);
   if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function rankToggle(key, rowEl){
+  const safeId = key.replace(/-/g,'_');
+  const panel = document.getElementById('rank-slots-' + safeId);
+  const arrow = rowEl.querySelector('span');
+  if(!panel) return;
+  const open = panel.style.display !== 'none';
+  if(open){ panel.style.display='none'; arrow.textContent='▶'; return; }
+  arrow.textContent='▼';
+  panel.style.display='block';
+  const b = bayMap[key];
+  if(!b){ panel.innerHTML='<div style="color:#999;font-size:9px;padding:4px">Sin datos</div>'; return; }
+  // Ordenar slots: primero ocupados, luego por nivel y posición
+  const sorted = b.slots.slice().sort((a,z)=> z.skus.length - a.skus.length || a.level - z.level || a.pos - z.pos);
+  const slotCap = b.zone==='BL'?1:6;
+  panel.innerHTML = sorted.map(s=>{
+    const n = s.skus.length;
+    const col = b.zone==='BL' ? blSkuColor(n) : skuColor(n);
+    const pct = Math.min(Math.round(n/slotCap*100),100);
+    const smData = SINMOV[s.id]||{};
+    const maxDias = Object.values(smData).length ? Math.max(...Object.values(smData)) : 0;
+    const smBadge = maxDias>=30 ? `<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:#3d2a0a;color:#F5A623;margin-left:4px">⏱${maxDias}d</span>` : '';
+    const skuList = n===0
+      ? `<span style="font-size:8px;color:#999">Vacía</span>`
+      : s.skus.map(sk=>{
+          const cat = CATALOG[sk];
+          return `<div style="font-size:8px;font-family:monospace;color:#333;padding:1px 0">${sk}${cat&&cat.title?` <span style="color:#666;font-family:sans-serif">${cat.title.slice(0,30)}${cat.title.length>30?'…':''}</span>`:''}`;
+        }).join('');
+    return `<div onclick="abrirSlotModal('${s.id}','${key}')" style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px;margin-bottom:2px;border-radius:4px;border:1px solid ${n>0?col+'44':'#E0E0E0'};background:${n>0?col+'12':'#F9F9F9'};cursor:pointer"
+      onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+      <div style="flex-shrink:0;text-align:center;min-width:28px">
+        <div style="font-size:10px;font-weight:700;color:${col}">${n}</div>
+        <div style="font-size:6px;color:#999">SKU</div>
+        <div style="height:3px;width:28px;background:#EEE;border-radius:2px;margin-top:2px"><div style="height:100%;width:${pct}%;background:${col};border-radius:2px"></div></div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:monospace;font-size:8px;font-weight:700;color:${n>0?col:'#3483FA88'};margin-bottom:2px">
+          L${s.level}·P${s.pos} — ${s.id}${smBadge}
+        </div>
+        <div>${skuList}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── Panel de detalle ──────────────────────────────────────────────────────
