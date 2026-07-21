@@ -865,23 +865,14 @@ function buildGrid(){
     parts.push(`<div class="axis-inner" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px;flex:1">`);
     for(let b=zd.step;b<=zd.maxBay;b+=zd.step) parts.push(`<div class="axis-tick" style="grid-column:${b}">${b}</div>`);
     parts.push(`</div></div>`);
-    const detalladoPorPasillo = selSet.size > 0;
     zd.aisles.forEach(aisle=>{
       // Filtrar por pasillo seleccionado (vacío = todos)
       if(selSet.size>0 && !selSet.has(aisle)) return;
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
       aisleHeader(`P${String(aisle).padStart(3,'0')}`);
-      if(detalladoPorPasillo){
-        // Vista detallada: una celda por slot individual
-        renderAisleSlots(zd.zp, aisle, baysInAisle);
-      } else {
-        // Vista agregada: una celda por bay×nivel
-        const aisleLevels=new Set();
-        baysInAisle.forEach(b=>b.slots.forEach(s=>aisleLevels.add(s.level)));
-        const sortedLevels=[...aisleLevels].sort((a,b)=>b-a);
-        sortedLevels.forEach(lvl=>renderRKLevelRow(zd.zp,aisle,zd.maxBay,lvl,gridW2));
-      }
+      // Siempre vista detallada: 1 celda = 1 ubicación
+      renderAisleSlots(zd.zp, aisle, baysInAisle);
     });
     parts.push(`</div></div></div></div>`);
   });
