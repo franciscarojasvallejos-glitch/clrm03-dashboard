@@ -699,6 +699,89 @@ function buildGrid(){
     parts.push(`<div style="flex:1;height:1px;background:#F5F5F5"></div></div>`);
   }
 
+  // ── Vista detallada: una celda por slot (bay × nivel × posición) ──────────
+  function renderAisleSlots(zone, aisle, baysInAisle){
+    // Ordenar bays y obtener todas las posiciones únicas por bay
+    const sortedBays = baysInAisle.slice().sort((a,b)=>a.bay-b.bay);
+
+    // Construir lista de columnas: {bay, pos}
+    const cols = [];
+    sortedBays.forEach(b=>{
+      const positions = [...new Set(b.slots.map(s=>s.pos))].sort((a,b)=>a-b);
+      positions.forEach(p=>cols.push({bay:b.bay, pos:p}));
+    });
+    if(!cols.length) return;
+
+    // Niveles disponibles en este pasillo
+    const levels = new Set();
+    baysInAisle.forEach(b=>b.slots.forEach(s=>levels.add(s.level)));
+    const sortedLevels = [...levels].sort((a,b)=>b-a);
+
+    // Lookup: "bay-level-pos" → slot
+    const slotLookup = {};
+    baysInAisle.forEach(b=>b.slots.forEach(s=>{
+      slotLookup[`${b.bay}-${s.level}-${s.pos}`] = {id:s.id, skus:s.skus};
+    }));
+
+    const CELL_S = 11; // px por celda en vista detallada
+    const GAP_BAY = 3; // px extra entre bays
+
+    // Calcular ancho total: cols * cell + gaps entre bays
+    const uniqueBays = [...new Set(cols.map(c=>c.bay))];
+    const totalW = cols.length * (CELL_S+1) + uniqueBays.length * GAP_BAY;
+
+    // Eje X: números de bay (encima de sus columnas)
+    parts.push(`<div style="display:flex;margin-left:48px;overflow:visible;margin-bottom:1px">`);
+    let colIdx=0;
+    sortedBays.forEach(b=>{
+      const bCols = cols.filter(c=>c.bay===b.bay);
+      const w = bCols.length*(CELL_S+1);
+      const occ = b.slots.filter(s=>s.skus.length>0).length;
+      const tot = b.n_slots;
+      const pct = tot>0?Math.round(occ/tot*100):0;
+      const bayColor = pct>=80?'#F23D4F':pct>=50?'#F5A623':'#3483FA';
+      parts.push(`<div style="width:${w}px;flex-shrink:0;margin-right:${GAP_BAY}px;text-align:center;font-size:6px;font-family:monospace;color:${bayColor};overflow:hidden;white-space:nowrap">${b.bay}</div>`);
+    });
+    parts.push(`</div>`);
+
+    // Subencabezado posiciones (P1 P2 P3 bajo cada bay)
+    parts.push(`<div style="display:flex;margin-left:48px;margin-bottom:2px">`);
+    sortedBays.forEach(b=>{
+      const bCols = cols.filter(c=>c.bay===b.bay);
+      bCols.forEach(c=>{
+        parts.push(`<div style="width:${CELL_S}px;flex-shrink:0;margin-right:1px;text-align:center;font-size:5px;color:#AAAAAA;font-family:monospace">P${c.pos}</div>`);
+      });
+      parts.push(`<div style="width:${GAP_BAY}px;flex-shrink:0"></div>`);
+    });
+    parts.push(`</div>`);
+
+    // Filas de niveles
+    sortedLevels.forEach(lvl=>{
+      parts.push(`<div style="display:flex;align-items:center;margin-bottom:1px">`);
+      parts.push(`<div style="width:46px;flex-shrink:0;text-align:right;padding-right:4px;font-size:7px;font-family:monospace;font-weight:700;color:#6e7681">L${lvl}</div>`);
+      sortedBays.forEach(b=>{
+        const bCols = cols.filter(c=>c.bay===b.bay);
+        bCols.forEach(c=>{
+          const sl = slotLookup[`${b.bay}-${lvl}-${c.pos}`];
+          const bayKey = `${zone}-${aisle}-${b.bay}`;
+          if(!sl){
+            parts.push(`<div class="bc wms-gap" style="width:${CELL_S}px;height:${CELL_S}px;flex-shrink:0;margin-right:1px"></div>`);
+          } else {
+            const n = sl.skus.length;
+            const bg = n===0 ? '#E8E8E8' : skuColor(n);
+            const smData = SINMOV[sl.id];
+            const maxDias = smData?Math.max(...Object.values(smData)):0;
+            const smDot = maxDias>=30?`<span style="position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#F5A623;pointer-events:none"></span>`:'';
+            const rel = smDot?'position:relative;overflow:visible':'';
+            parts.push(`<div class="bc" style="background:${bg};width:${CELL_S}px;height:${CELL_S}px;flex-shrink:0;margin-right:1px;${rel}" data-key="${bayKey}" data-slot="${sl.id}" title="${sl.id}">${smDot}</div>`);
+          }
+        });
+        parts.push(`<div style="width:${GAP_BAY}px;flex-shrink:0"></div>`);
+      });
+      parts.push(`</div>`);
+    });
+  }
+
   // ── BL section ────────────────────────────────────────────────────────
   const tab=BL_TABS.find(t=>t.id===blTab)||BL_TABS[0];
   const tabAisleSet=new Set(tab.aisles);
@@ -782,16 +865,23 @@ function buildGrid(){
     parts.push(`<div class="axis-inner" style="grid-template-columns:repeat(${zd.maxBay},minmax(${CELL_MIN}px,1fr));min-width:${gridW2}px;flex:1">`);
     for(let b=zd.step;b<=zd.maxBay;b+=zd.step) parts.push(`<div class="axis-tick" style="grid-column:${b}">${b}</div>`);
     parts.push(`</div></div>`);
+    const detalladoPorPasillo = selSet.size > 0;
     zd.aisles.forEach(aisle=>{
       // Filtrar por pasillo seleccionado (vacío = todos)
       if(selSet.size>0 && !selSet.has(aisle)) return;
       const baysInAisle=BAYS.filter(b=>b.zone===zd.zp&&b.aisle===aisle);
       if(!baysInAisle.length) return;
-      const aisleLevels=new Set();
-      baysInAisle.forEach(b=>b.slots.forEach(s=>aisleLevels.add(s.level)));
-      const sortedLevels=[...aisleLevels].sort((a,b)=>b-a);
       aisleHeader(`P${String(aisle).padStart(3,'0')}`);
-      sortedLevels.forEach(lvl=>renderRKLevelRow(zd.zp,aisle,zd.maxBay,lvl,gridW2));
+      if(detalladoPorPasillo){
+        // Vista detallada: una celda por slot individual
+        renderAisleSlots(zd.zp, aisle, baysInAisle);
+      } else {
+        // Vista agregada: una celda por bay×nivel
+        const aisleLevels=new Set();
+        baysInAisle.forEach(b=>b.slots.forEach(s=>aisleLevels.add(s.level)));
+        const sortedLevels=[...aisleLevels].sort((a,b)=>b-a);
+        sortedLevels.forEach(lvl=>renderRKLevelRow(zd.zp,aisle,zd.maxBay,lvl,gridW2));
+      }
     });
     parts.push(`</div></div></div></div>`);
   });
