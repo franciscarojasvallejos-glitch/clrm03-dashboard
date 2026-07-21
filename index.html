@@ -1066,91 +1066,152 @@ function abrirSlotModal(slotId, bayKey){
   modal.classList.add('vis');
 }
 
-// ── Buscador de ubicaciones ───────────────────────────────────────────────
-let _rankSort='az'; // 'az','za','occ','free'
+// ── Buscador de ubicaciones (por slot individual) ─────────────────────────
+let _rankSort='az';
+
+// Áreas del buscador
+const RANK_AREAS=[
+  {id:'BL',  label:'BL — Bulk Locations', color:'#4da6ff',  test:(b)=>b.zone==='BL'},
+  {id:'ZA',  label:'RK — Z-A  (P005–P012)', color:'#00A650', test:(b)=>b.zone==='RK'&&b.aisle>=5&&b.aisle<=12},
+  {id:'ZA2', label:'RK — Z-A2 (P013–P018)', color:'#56d364', test:(b)=>b.zone==='RK'&&b.aisle>=13&&b.aisle<=18},
+  {id:'ZB',  label:'RK — Z-B  (P101–P123)', color:'#3483FA', test:(b)=>b.zone==='RK'&&b.aisle>=101&&b.aisle<=123},
+];
+let _rankAreaOpen=new Set(RANK_AREAS.map(a=>a.id));
 
 function renderRanking(){
-  const body=document.getElementById('det-body');
-  const dhdr=document.getElementById('det-hdr');
   const dhdrTxt=document.getElementById('det-hdr-txt'); if(dhdrTxt) dhdrTxt.textContent='Buscador de Ubicaciones';
   const detBack=document.getElementById('det-back'); if(detBack) detBack.style.display='none';
-
-  body.innerHTML=`
-    <div style="padding:6px 8px;border-bottom:1px solid #F5F5F5">
-      <input id="rank-q" type="text" placeholder="Ej: RK-0-005, BL-0-001…" autocomplete="off"
+  document.getElementById('det-body').innerHTML=`
+    <div style="padding:6px 8px;border-bottom:1px solid #F0F0F0;position:sticky;top:0;background:#fff;z-index:2">
+      <input id="rank-q" type="text" placeholder="Ej: RK-0-005-001-06-01, BL-0-001…" autocomplete="off"
         style="width:100%;background:#F5F5F5;border:1px solid #D9D9D9;border-radius:4px;font-size:10px;
-               font-family:monospace;padding:4px 8px;outline:none;color:#333333"
+               font-family:monospace;padding:4px 8px;outline:none;color:#333333;box-sizing:border-box"
         oninput="rankFilter()" />
       <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
         <button onclick="rankSetSort('az')"  id="rsrt-az"  class="rank-sort-btn rank-sort-on">A→Z</button>
         <button onclick="rankSetSort('za')"  id="rsrt-za"  class="rank-sort-btn">Z→A</button>
         <button onclick="rankSetSort('occ')" id="rsrt-occ" class="rank-sort-btn">Mayor ocup.</button>
-        <button onclick="rankSetSort('free')"id="rsrt-free"class="rank-sort-btn">Más libres</button>
+        <button onclick="rankSetSort('free')"id="rsrt-free"class="rank-sort-btn">Vacías primero</button>
       </div>
       <div id="rank-meta" style="font-size:9px;color:#999999;margin-top:4px"></div>
     </div>
-    <div id="rank-list" style="overflow-y:auto;max-height:calc(100vh - 260px)"></div>`;
-
+    <div id="rank-list" style="overflow-y:auto;max-height:calc(100vh - 270px)"></div>`;
   rankFilter();
 }
 
 function rankSetSort(s){
   _rankSort=s;
   document.querySelectorAll('.rank-sort-btn').forEach(b=>b.classList.remove('rank-sort-on'));
-  const el=document.getElementById('rsrt-'+s);
-  if(el) el.classList.add('rank-sort-on');
+  const el=document.getElementById('rsrt-'+s); if(el) el.classList.add('rank-sort-on');
   rankFilter();
+}
+
+function _buildSlotList(){
+  // Lista plana de todos los slots con metadatos
+  const slots=[];
+  Object.values(bayMap).forEach(b=>{
+    const slotCap=b.zone==='BL'?1:6;
+    b.slots.forEach(s=>{
+      const n=s.skus.length;
+      const pct=Math.min(Math.round(n/slotCap*100),100);
+      slots.push({id:s.id, skus:s.skus, n, pct, slotCap, bay:b, level:s.level, pos:s.pos,
+                  sku_qtys:s.sku_qtys||{}});
+    });
+  });
+  return slots;
 }
 
 function rankFilter(){
   const q=(document.getElementById('rank-q')?.value||'').toLowerCase().trim();
-  let entries=Object.entries(bayMap).map(([key,b])=>{
-    const occ=b.slots.filter(s=>s.skus.length>0).length;
-    const pct=b.n_slots>0?Math.round(occ/b.n_slots*100):0;
-    const addr=`${b.zone}-0-${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
-    return {key,b,occ,pct,addr};
-  });
+  let all=_buildSlotList();
 
-  if(q) entries=entries.filter(e=>
-    e.addr.toLowerCase().includes(q) ||
-    e.key.toLowerCase().includes(q) ||
-    e.b.slots.some(s=>s.id.toLowerCase().includes(q))
-  );
+  if(q) all=all.filter(e=>e.id.toLowerCase().includes(q)||e.skus.some(sk=>sk.toLowerCase().includes(q)));
 
-  if(_rankSort==='az')   entries.sort((a,b)=>a.addr.localeCompare(b.addr));
-  if(_rankSort==='za')   entries.sort((a,b)=>b.addr.localeCompare(a.addr));
-  if(_rankSort==='occ')  entries.sort((a,b)=>b.pct-a.pct||b.occ-a.occ);
-  if(_rankSort==='free') entries.sort((a,b)=>a.pct-b.pct||(a.b.n_slots-a.occ)-(b.b.n_slots-b.occ));
+  if(_rankSort==='az')   all.sort((a,b)=>a.id.localeCompare(b.id));
+  if(_rankSort==='za')   all.sort((a,b)=>b.id.localeCompare(a.id));
+  if(_rankSort==='occ')  all.sort((a,b)=>b.pct-a.pct||b.n-a.n);
+  if(_rankSort==='free') all.sort((a,b)=>a.pct-b.pct||a.n-b.n);
 
   const meta=document.getElementById('rank-meta');
-  if(meta) meta.textContent=`${entries.length.toLocaleString()} bays encontrados`;
+  if(meta) meta.textContent=`${all.length.toLocaleString()} ubicaciones encontradas`;
 
-  const list=document.getElementById('rank-list');
-  if(!list) return;
+  const list=document.getElementById('rank-list'); if(!list) return;
 
-  const visible=entries.slice(0,200);
-  list.innerHTML=visible.map(({key,b,occ,pct,addr})=>{
-    const pctColor=pct>=90?'#F23D4F':pct>=70?'#F5A623':pct>0?'#00A650':'#999999';
-    const bar=`<div style="flex:1;height:4px;background:#F5F5F5;border-radius:2px;overflow:hidden;min-width:40px">
-      <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px"></div></div>`;
-    // Expandible: muestra slots individuales al hacer click
-    return `<div style="border-bottom:1px solid #F0F0F0">
-      <div onclick="rankToggle('${key}',this)" style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;transition:background .1s"
-        onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
-        <span style="font-size:9px;color:#AAAAAA;width:10px">▶</span>
-        <span style="font-family:monospace;font-size:9px;color:#3483FA;min-width:90px">${addr}</span>
-        ${bar}
-        <span style="font-size:10px;font-weight:700;color:${pctColor};min-width:34px;text-align:right">${pct}%</span>
-        <span style="font-size:8px;color:#999999;white-space:nowrap">${occ}/${b.n_slots}</span>
-      </div>
-      <div id="rank-slots-${key.replace(/-/g,'_')}" style="display:none;padding:0 8px 6px 24px;background:#FAFAFA"></div>
-    </div>`;
-  }).join('');
-
-  if(entries.length>200){
-    list.innerHTML+=`<div style="font-size:9px;color:#999999;text-align:center;padding:8px">
-      Mostrando 200 de ${entries.length} — usa el buscador para filtrar</div>`;
+  // Si hay búsqueda activa: lista plana sin secciones
+  if(q){
+    const visible=all.slice(0,300);
+    list.innerHTML=visible.map(e=>_slotRow(e)).join('');
+    if(all.length>300) list.innerHTML+=`<div style="font-size:9px;color:#999;text-align:center;padding:8px">Mostrando 300 de ${all.length} — refina la búsqueda</div>`;
+    return;
   }
+
+  // Sin búsqueda: agrupar por área con acordeón
+  let html='';
+  RANK_AREAS.forEach(area=>{
+    const areaSlots=all.filter(e=>area.test(e.bay));
+    if(!areaSlots.length) return;
+    const occ=areaSlots.filter(e=>e.n>0).length;
+    const pctArea=Math.round(occ/areaSlots.length*100);
+    const open=_rankAreaOpen.has(area.id);
+    html+=`<div style="border-bottom:1px solid #E8E8E8">
+      <div onclick="rankToggleArea('${area.id}')" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#F8F8F8;cursor:pointer;user-select:none"
+        onmouseover="this.style.background='#F0F0F0'" onmouseout="this.style.background='#F8F8F8'">
+        <span style="font-size:9px;color:#AAAAAA">${open?'▼':'▶'}</span>
+        <span style="font-size:10px;font-weight:700;color:${area.color}">${area.label}</span>
+        <span style="margin-left:auto;font-size:9px;color:#999999">${occ.toLocaleString()}/${areaSlots.length.toLocaleString()} ocup · ${pctArea}%</span>
+      </div>
+      <div id="rank-area-${area.id}" style="display:${open?'block':'none'}">`;
+    const visible=areaSlots.slice(0,400);
+    html+=visible.map(e=>_slotRow(e)).join('');
+    if(areaSlots.length>400) html+=`<div style="font-size:9px;color:#999;text-align:center;padding:6px">Mostrando 400 de ${areaSlots.length} — usa el buscador</div>`;
+    html+=`</div></div>`;
+  });
+  list.innerHTML=html;
+}
+
+function rankToggleArea(id){
+  _rankAreaOpen.has(id)?_rankAreaOpen.delete(id):_rankAreaOpen.add(id);
+  const panel=document.getElementById('rank-area-'+id);
+  if(panel) panel.style.display=_rankAreaOpen.has(id)?'block':'none';
+  const arrow=panel?.previousElementSibling?.querySelector('span');
+  if(arrow) arrow.textContent=_rankAreaOpen.has(id)?'▼':'▶';
+}
+
+function _slotRow(e){
+  const {id, skus, n, pct, slotCap, bay:b, level, pos} = e;
+  const col = b.zone==='BL' ? blSkuColor(n) : skuColor(n);
+  const pctColor = pct>=90?'#F23D4F':pct>=60?'#F5A623':n>0?'#00A650':'#CCCCCC';
+  const smData=SINMOV[id]||{};
+  const maxDias=Object.values(smData).length?Math.max(...Object.values(smData)):0;
+  const smBadge=maxDias>=30?`<span style="font-size:7px;padding:1px 3px;border-radius:2px;background:#3d2a0a;color:#F5A623;margin-left:3px">⏱${maxDias}d</span>`:'';
+  const bayKey=`${b.zone}-${b.aisle}-${b.bay}`;
+
+  // SKU + responsable
+  const skuHtml = n===0
+    ? `<span style="font-size:8px;color:#CCCCCC">Vacía</span>`
+    : skus.map(sk=>{
+        const cat=CATALOG[sk];
+        const resp=RESP[`${id}|${sk}`];
+        const procIcon=resp?.proc==='transfer'?'🔄':'📦';
+        const hasName=resp&&resp.name;
+        const who=hasName?resp.name:(resp?`Op.#${resp.user}`:null);
+        return `<div style="font-size:8px;color:#333;padding:1px 0;font-family:monospace">${sk}${cat?.title?` <span style="color:#666;font-family:sans-serif;font-size:7px">${cat.title.slice(0,26)}${cat.title.length>26?'…':''}</span>`:''}
+          ${who?`<span style="color:${hasName?'#F5A623':'#999'};font-size:7px;font-family:sans-serif">&nbsp;${procIcon} ${who}${resp.date?` · ${resp.date}`:''}</span>`:''}
+        </div>`;
+      }).join('');
+
+  return `<div onclick="abrirSlotModal('${id}','${bayKey}')" style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;border-bottom:1px solid #F5F5F5;cursor:pointer;background:${n>0?col+'0a':'#FFFFFF'}"
+    onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background='${n>0?col+'0a':'#FFFFFF'}'">
+    <div style="flex-shrink:0;width:30px;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:${col||'#CCCCCC'}">${n}</div>
+      <div style="height:3px;background:#EEE;border-radius:2px;margin-top:2px"><div style="height:100%;width:${pct}%;background:${col||'#EEE'};border-radius:2px"></div></div>
+      <div style="font-size:7px;color:${pctColor};margin-top:1px">${pct}%</div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-family:monospace;font-size:9px;font-weight:700;color:${n>0?col:'#AAAAAA'}">${id}${smBadge}</div>
+      <div style="margin-top:2px">${skuHtml}</div>
+    </div>
+  </div>`;
 }
 
 function rankClick(key){
@@ -1160,58 +1221,6 @@ function rankClick(key){
   renderDetail(bayMap[selKey],selKey);
   const el=document.querySelector(`[data-key="${CSS.escape(selKey)}"]`);
   if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
-}
-
-function rankToggle(key, rowEl){
-  const safeId = key.replace(/-/g,'_');
-  const panel = document.getElementById('rank-slots-' + safeId);
-  const arrow = rowEl.querySelector('span');
-  if(!panel) return;
-  const open = panel.style.display !== 'none';
-  if(open){ panel.style.display='none'; arrow.textContent='▶'; return; }
-  arrow.textContent='▼';
-  panel.style.display='block';
-  const b = bayMap[key];
-  if(!b){ panel.innerHTML='<div style="color:#999;font-size:9px;padding:4px">Sin datos</div>'; return; }
-  // Ordenar slots: primero ocupados, luego por nivel y posición
-  const sorted = b.slots.slice().sort((a,z)=> z.skus.length - a.skus.length || a.level - z.level || a.pos - z.pos);
-  const slotCap = b.zone==='BL'?1:6;
-  panel.innerHTML = sorted.map(s=>{
-    const n = s.skus.length;
-    const col = b.zone==='BL' ? blSkuColor(n) : skuColor(n);
-    const pct = Math.min(Math.round(n/slotCap*100),100);
-    const smData = SINMOV[s.id]||{};
-    const maxDias = Object.values(smData).length ? Math.max(...Object.values(smData)) : 0;
-    const smBadge = maxDias>=30 ? `<span style="font-size:7px;padding:1px 4px;border-radius:3px;background:#3d2a0a;color:#F5A623;margin-left:4px">⏱${maxDias}d</span>` : '';
-    const skuList = n===0
-      ? `<span style="font-size:8px;color:#999">Vacía</span>`
-      : s.skus.map(sk=>{
-          const cat = CATALOG[sk];
-          const resp = RESP[`${s.id}|${sk}`];
-          const proc = resp?.proc||'put_away';
-          const procIcon = proc==='transfer'?'🔄':'📦';
-          const hasName = resp&&resp.name;
-          const displayName = hasName ? resp.name : (resp ? `Op. #${resp.user}` : null);
-          const respHtml = displayName
-            ? `<div style="font-size:7px;color:${hasName?'#F5A623':'#999999'};font-style:${hasName?'normal':'italic'};margin-top:1px">${procIcon} ${displayName}${resp.date?` · <span style="color:#AAAAAA">${resp.date}</span>`:''}</div>`
-            : '';
-          return `<div style="font-size:8px;font-family:monospace;color:#333;padding:1px 0">${sk}${cat&&cat.title?` <span style="color:#666;font-family:sans-serif">${cat.title.slice(0,28)}${cat.title.length>28?'…':''}</span>`:''}${respHtml}</div>`;
-        }).join('');
-    return `<div onclick="abrirSlotModal('${s.id}','${key}')" style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px;margin-bottom:2px;border-radius:4px;border:1px solid ${n>0?col+'44':'#E0E0E0'};background:${n>0?col+'12':'#F9F9F9'};cursor:pointer"
-      onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
-      <div style="flex-shrink:0;text-align:center;min-width:28px">
-        <div style="font-size:10px;font-weight:700;color:${col}">${n}</div>
-        <div style="font-size:6px;color:#999">SKU</div>
-        <div style="height:3px;width:28px;background:#EEE;border-radius:2px;margin-top:2px"><div style="height:100%;width:${pct}%;background:${col};border-radius:2px"></div></div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-family:monospace;font-size:8px;font-weight:700;color:${n>0?col:'#3483FA88'};margin-bottom:2px">
-          L${s.level}·P${s.pos} — ${s.id}${smBadge}
-        </div>
-        <div>${skuList}</div>
-      </div>
-    </div>`;
-  }).join('');
 }
 
 // ── Panel de detalle ──────────────────────────────────────────────────────
