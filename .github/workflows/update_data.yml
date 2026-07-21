@@ -23,10 +23,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Instalar dependencias
-        run: pip install google-cloud-bigquery==3.41.0 db-dtypes pyarrow
+        run: pip install google-cloud-bigquery db-dtypes pyarrow zoneinfo 2>/dev/null || pip install google-cloud-bigquery db-dtypes pyarrow
 
       - name: Autenticar BigQuery (Service Account)
         run: |
