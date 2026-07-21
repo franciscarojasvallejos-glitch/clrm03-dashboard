@@ -1183,7 +1183,15 @@ function rankToggle(key, rowEl){
       ? `<span style="font-size:8px;color:#999">Vacía</span>`
       : s.skus.map(sk=>{
           const cat = CATALOG[sk];
-          return `<div style="font-size:8px;font-family:monospace;color:#333;padding:1px 0">${sk}${cat&&cat.title?` <span style="color:#666;font-family:sans-serif">${cat.title.slice(0,30)}${cat.title.length>30?'…':''}</span>`:''}`;
+          const resp = RESP[`${s.id}|${sk}`];
+          const proc = resp?.proc||'put_away';
+          const procIcon = proc==='transfer'?'🔄':'📦';
+          const hasName = resp&&resp.name;
+          const displayName = hasName ? resp.name : (resp ? `Op. #${resp.user}` : null);
+          const respHtml = displayName
+            ? `<div style="font-size:7px;color:${hasName?'#F5A623':'#999999'};font-style:${hasName?'normal':'italic'};margin-top:1px">${procIcon} ${displayName}${resp.date?` · <span style="color:#AAAAAA">${resp.date}</span>`:''}</div>`
+            : '';
+          return `<div style="font-size:8px;font-family:monospace;color:#333;padding:1px 0">${sk}${cat&&cat.title?` <span style="color:#666;font-family:sans-serif">${cat.title.slice(0,28)}${cat.title.length>28?'…':''}</span>`:''}${respHtml}</div>`;
         }).join('');
     return `<div onclick="abrirSlotModal('${s.id}','${key}')" style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px;margin-bottom:2px;border-radius:4px;border:1px solid ${n>0?col+'44':'#E0E0E0'};background:${n>0?col+'12':'#F9F9F9'};cursor:pointer"
       onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
