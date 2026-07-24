@@ -2268,38 +2268,137 @@ function renderInboundIS(){
   body.innerHTML=html;
 }
 
-function _sugerenciasGuardado(isNT){
-  // Calcula sugerencias de guardado basadas en la ocupación de bayMap
-  // Para NT → preferir Z-B (aisle 101-123); para TC → cualquier zona RK
-  const candidatos=[];
-  Object.values(bayMap).forEach(b=>{
-    if(b.zone!=='RK') return;
-    if(isNT && (b.aisle<101||b.aisle>123)) return;
-    const cap=6;
-    const total=b.slots.length;
-    if(!total) return;
-    const ocupados=b.slots.filter(s=>s.skus&&s.skus.length>0).length;
-    const libres=total-ocupados;
-    if(libres===0) return;
-    const pct=Math.round(ocupados/total*100);
-    const zona=b.aisle>=101?'Z-B':b.aisle>=13?'Z-A2':'Z-A';
-    const bayLabel=`P${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
-    candidatos.push({bayLabel,zona,libres,total,pct,b});
-  });
-  // Ordenar: más libres primero, luego menor porcentaje ocupado
-  candidatos.sort((a,b2)=>b2.libres-a.libres||a.pct-b2.pct);
-  const top=candidatos.slice(0,5);
+// Dominios con afinidad BL (productos voluminosos / pesados / no caben en rack RK)
+const BL_AFFINITY_DOMAINS = new Set([
+  'MLC-TELEVISIONS',
+  'MLC-LAUNDRY_DETERGENTS',
+  'MLC-LATEX_ENAMEL_AND_ACRYLIC_PAINTS',
+  'MLC-DISPOSABLE_BABY_DIAPERS',
+  'MLC-ADULT_DIAPERS',
+  'MLC-KITCHEN_PAPER_TOWELS',
+  'MLC-TOILET_PAPERS',
+  'MLC-MINERAL_WATERS',
+  'MLC-FOOTWEAR_CLEANERS_AND_POLISHES',
+  'MLC-COOKING_OILS',
+  'MLC-WET_BABY_WIPES',
+  'MLC-PRINTERS',
+  'MLC-VEHICLE_COOLANTS_AND_ANTIFREEZE',
+  'MLC-DISHWASHING_DETERGENTS',
+  'MLC-VEHICLE_ADDITIVES',
+  'MLC-PAINT_BRUSHES',
+  'MLC-MULTIPURPOSE_CLEANERS_AND_DISINFECTANTS',
+  'MLC-FABRIC_SOFTENERS',
+  'MLC-ENGINE_OILS',
+  'MLC-FLOOR_DEODORIZERS',
+  'MLC-COOKIES',
+  'MLC-THERMAL_ADHESIVE_TAPES',
+  'MLC-PLANTING_KITS',
+  'MLC-BEERS',
+]);
+
+// Dominios con afinidad RK-BAJO: nivel 1-2, primeros pasillos de cada zona
+// (productos pesados/voluminosos que sí caben en rack pero deben ir abajo)
+const RK_LOW_DOMAINS = new Set([
+  'MLC-CAT_AND_DOG_FOODS',
+  'MLC-CAT_LITTER',
+  'MLC-DOG_FOOD',
+  'MLC-CAT_FOOD',
+  'MLC-PET_FOOD',
+]);
+
+function _sugerenciasGuardado(isNT, skuList){
+  const skus = skuList || [];
+  const dominios = skus.map(sk=>(CATALOG[sk]||{}).domain||'').filter(Boolean);
+
+  const blMatches  = dominios.filter(d=>BL_AFFINITY_DOMAINS.has(d));
+  const rkLowMatches = dominios.filter(d=>RK_LOW_DOMAINS.has(d));
+
+  // Prioridad: NT > BL affinity > RK bajo > RK normal
+  const esBL    = !isNT && blMatches.length > 0 && rkLowMatches.length === 0;
+  const esRKLow = !isNT && !esBL && rkLowMatches.length > 0;
+
+  const candidatos = [];
+
+  if(esBL){
+    Object.values(bayMap).forEach(b=>{
+      if(b.zone!=='BL') return;
+      const vacios = b.slots.filter(s=>!s.skus||s.skus.length===0).length;
+      const total = b.slots.length;
+      if(!vacios) return;
+      const pct = Math.round((total-vacios)/total*100);
+      const bayLabel = b.key || `BL-${b.aisle}-${String(b.bay).padStart(3,'0')}`;
+      candidatos.push({bayLabel, zona:'BL', libres:vacios, total, pct});
+    });
+    candidatos.sort((a,b2)=>b2.libres-a.libres||a.pct-b2.pct);
+
+  } else if(esRKLow){
+    // RK bajo: nivel 1-2, preferir primeros pasillos de cada zona
+    // Z-A P005-P012, Z-A2 P013-P018, Z-B P101-P123
+    // "primeros" = aisles más bajos dentro de cada zona
+    const FIRST_AISLES = {ZA:[5,6,7,8,9,10], ZA2:[13,14,15,16], ZB:[101,102,103,104,105,106,107,108]};
+    const allFirstAisles = new Set([...FIRST_AISLES.ZA,...FIRST_AISLES.ZA2,...FIRST_AISLES.ZB]);
+    Object.values(bayMap).forEach(b=>{
+      if(b.zone!=='RK') return;
+      const esFirstAisle = allFirstAisles.has(b.aisle);
+      // Slots de nivel 1-2 disponibles
+      const slotsLow = b.slots.filter(s=>s.level<=2);
+      const libresLow = slotsLow.filter(s=>!s.skus||s.skus.length===0).length;
+      if(!libresLow) return;
+      const totalLow = slotsLow.length;
+      const pct = Math.round((totalLow-libresLow)/totalLow*100);
+      const zona = b.aisle>=101?'Z-B':b.aisle>=13?'Z-A2':'Z-A';
+      const bayLabel = `P${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
+      // Dar prioridad a primeros pasillos
+      candidatos.push({bayLabel, zona, libres:libresLow, total:totalLow, pct, prioridad: esFirstAisle?1:0});
+    });
+    candidatos.sort((a,b2)=>b2.prioridad-a.prioridad||b2.libres-a.libres||a.pct-b2.pct);
+
+  } else {
+    // RK normal: NT → solo Z-B, resto → cualquier RK
+    Object.values(bayMap).forEach(b=>{
+      if(b.zone!=='RK') return;
+      if(isNT && (b.aisle<101||b.aisle>123)) return;
+      const total = b.slots.length;
+      if(!total) return;
+      const ocupados = b.slots.filter(s=>s.skus&&s.skus.length>0).length;
+      const libres = total - ocupados;
+      if(!libres) return;
+      const pct = Math.round(ocupados/total*100);
+      const zona = b.aisle>=101?'Z-B':b.aisle>=13?'Z-A2':'Z-A';
+      const bayLabel = `P${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
+      candidatos.push({bayLabel, zona, libres, total, pct});
+    });
+    candidatos.sort((a,b2)=>b2.libres-a.libres||a.pct-b2.pct);
+  }
+
+  const top = candidatos.slice(0,6);
   if(!top.length) return '<div style="font-size:9px;color:#999999;padding:8px 0">No hay ubicaciones disponibles en este momento.</div>';
-  return top.map(c=>{
-    const bar=`<div style="height:4px;border-radius:2px;background:#EEEEEE;margin-top:2px"><div style="width:${c.pct}%;height:4px;border-radius:2px;background:${c.pct>80?'#F23D4F':c.pct>50?'#F5A623':'#00A650'}"></div></div>`;
+
+  let motivoHtml = '';
+  if(esBL){
+    const domLabel = [...new Set(blMatches)].slice(0,2).map(d=>d.replace('MLC-','').replace(/_/g,' ').toLowerCase()).join(', ');
+    motivoHtml = `<div style="font-size:8px;color:#8B5CF6;background:#F3F0FF;border-radius:4px;padding:3px 7px;margin-bottom:6px;display:inline-block">📦 Afinidad BL: ${domLabel}</div>`;
+  } else if(esRKLow){
+    const domLabel = [...new Set(rkLowMatches)].slice(0,2).map(d=>d.replace('MLC-','').replace(/_/g,' ').toLowerCase()).join(', ');
+    motivoHtml = `<div style="font-size:8px;color:#00A650;background:#F0FFF4;border-radius:4px;padding:3px 7px;margin-bottom:6px;display:inline-block">🐾 RK nivel bajo (1-2), primeros pasillos: ${domLabel}</div>`;
+  } else if(isNT){
+    motivoHtml = `<div style="font-size:8px;color:#3483FA;background:#EBF2FF;border-radius:4px;padding:3px 7px;margin-bottom:6px;display:inline-block">🔵 NT → zona Z-B preferida</div>`;
+  }
+
+  const col = esBL?'#8B5CF6':'#3483FA';
+  const filas = top.map(c=>{
+    const bar = `<div style="height:4px;border-radius:2px;background:#EEEEEE;margin-top:2px"><div style="width:${c.pct}%;height:4px;border-radius:2px;background:${c.pct>80?'#F23D4F':c.pct>50?'#F5A623':'#00A650'}"></div></div>`;
+    const nivelTag = esRKLow?`<span style="font-size:7px;color:#00A650;background:#F0FFF4;border-radius:3px;padding:1px 4px;border:1px solid #00A650">N1-2</span>`:'';
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F0F0F0">
-      <span style="font-family:monospace;font-size:10px;font-weight:700;color:#3483FA;min-width:75px">${c.bayLabel}</span>
+      <span style="font-family:monospace;font-size:10px;font-weight:700;color:${col};min-width:80px">${c.bayLabel}</span>
       <span style="font-size:8px;color:#999999;min-width:28px">${c.zona}</span>
+      ${nivelTag}
       <div style="flex:1">${bar}</div>
       <span style="font-size:9px;color:#00A650;font-weight:700;white-space:nowrap">${c.libres} lib.</span>
       <span style="font-size:8px;color:#999999">${c.pct}% lleno</span>
     </div>`;
   }).join('');
+  return motivoHtml + filas;
 }
 
 function _productosMovable(list, pw){
@@ -2348,8 +2447,9 @@ function chkRenderMovable(){
               :pw.mins_restantes!=null?`🟢 ${fmtHoras(pw.mins_restantes)} restantes`:'—';
   const wmsUrl=isId?`https://wms.adminml.com/reports/totes?inbound_id=${isId}&resource=PUT_AWAY`:'';
 
+  const movSkus=list.map(o=>o.sku);
   const panelProductos=_productosMovable(list,pw);
-  const panelSugerencias=_sugerenciasGuardado(isNT);
+  const panelSugerencias=_sugerenciasGuardado(isNT, movSkus);
 
   const infoCard=`
     <div style="background:#FFFFFF;border:1px solid #D9D9D9;border-radius:8px;padding:12px 14px;max-width:560px;margin:0 auto">
@@ -2366,7 +2466,7 @@ function chkRenderMovable(){
       <div style="margin-bottom:12px">${panelProductos}</div>
 
       <div style="font-size:9px;font-weight:700;color:#333333;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #E8E8E8">
-        📍 Sugerencias de guardado${isNT?' <span style="font-size:8px;color:#3483FA;font-weight:400">(NT → Z-B)</span>':''}
+        📍 Sugerencias de guardado
       </div>
       <div style="margin-bottom:8px">${panelSugerencias}</div>
 
