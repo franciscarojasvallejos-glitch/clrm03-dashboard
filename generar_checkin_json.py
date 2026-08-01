@@ -167,6 +167,113 @@ def generate(dias=1):
             'is_nt':            '-NT-' in (r.movable or ''),
         })
 
+    # ── Paso 2: IS pendientes en PW que no llegaron por la ventana de fecha ──────
+    # Los movables viejos (>1 día) que siguen WAITING en WMS no aparecen en la
+    # consulta principal. Los traemos explícitamente por IS id.
+    is_ya = {x['is_id'] for x in items if x['is_id']}
+    q_pending_is = f"""
+    SELECT DISTINCT SOURCE_PROCESS_ID AS is_id, ADDRESS_FROM AS movable
+    FROM `{PROJECT}.WHOWNER.BT_FBM_PUTAWAY`
+    WHERE WAREHOUSE_ID = '{WH}'
+      AND PW_STATUS IN ('WAITING_STORAGE_TO','WAITING_FINISH')
+      AND SOURCE_PROCESS_ID IS NOT NULL
+    """
+    pending_map = {str(int(r.is_id)): (r.movable or '') for r in client.query(q_pending_is).result()
+                   if r.is_id and str(int(r.is_id)) not in is_ya}
+    pending_ids = list(pending_map.keys())
+    print(f"  IS pendientes sin detalle: {len(pending_ids)}", flush=True)
+
+    if pending_ids:
+        # Consultar en lotes de 500
+        lote_sz = 500
+        for i in range(0, len(pending_ids), lote_sz):
+            lote = pending_ids[i:i+lote_sz]
+            ids_str = ', '.join(x for x in lote)  # NUMERIC — sin comillas
+            q2 = f"""
+            SELECT
+              op.INBOUND_ID,
+              op.INVENTORY_ID,
+              op.CUS_NICKNAME                            AS seller,
+              op.INB_QUANTITY                            AS qty_declarada,
+              COALESCE(op.CHKU_UNITS_OK, 0)
+                + COALESCE(op.CHKU_UNITS_DAMAGED, 0)     AS qty_checkin,
+              COALESCE(op.PW_UNITS_OK, 0)
+                + COALESCE(op.PW_UNITS_DAMAGED, 0)       AS qty_putaway,
+              op.CHK_FBM_USER_ID                         AS chk_user_id,
+              op.PW_FBM_USER_ID                          AS pw_user_id,
+              op.CHK_CREATED_DATETIME                    AS chk_ts,
+              op.PW_CREATED_DATETIME                     AS pw_inicio_ts,
+              op.PW_UPDATED_DATETIME                     AS pw_fin_ts,
+              op.CHK_STATUS                              AS chk_status,
+              op.PW_STATUS                               AS pw_status,
+              op.CHECKIN_PUTAWAY                         AS estado,
+              op.INB_SHIPMENT_TYPE                       AS tipo,
+              pw.SOURCE_PROCESS_ID                       AS is_id,
+              pw.ADDRESS_FROM                            AS movable_pw
+            FROM `{PROJECT}.WHOWNER.BT_FBM_INBOUND_OPERATION` op
+            JOIN `{PROJECT}.WHOWNER.BT_FBM_PUTAWAY` pw
+              ON pw.PUTAWAY_ID = op.PUTAWAY_ID
+            WHERE op.WAREHOUSE_ID = '{WH}'
+              AND op.SIT_SITE_ID  = 'MLC'
+              AND pw.SOURCE_PROCESS_ID IN ({ids_str})
+            """
+            rows2 = list(client.query(q2).result())
+            print(f"  Lote IS pendientes {i//lote_sz+1}: {len(rows2)} filas", flush=True)
+            for r in rows2:
+                chk_ts    = r.chk_ts
+                pw_ini_ts = r.pw_inicio_ts
+                pw_fin_ts = r.pw_fin_ts
+
+                def to_naive(dt):
+                    if dt is None: return None
+                    if isinstance(dt, datetime):
+                        return dt.replace(tzinfo=None)
+                    return datetime.fromisoformat(str(dt)).replace(tzinfo=None)
+
+                chk_naive = to_naive(chk_ts)
+                pw_ini    = to_naive(pw_ini_ts)
+                pw_fin    = to_naive(pw_fin_ts)
+
+                mins_since_chk = int((now_dt - chk_naive).total_seconds() / 60) if chk_naive else None
+                mins_to_pw     = int((pw_ini - chk_naive).total_seconds() / 60) if (pw_ini and chk_naive) else None
+                mins_pw_dur    = int((pw_fin - pw_ini).total_seconds() / 60)    if (pw_fin and pw_ini) else None
+
+                pw_status  = (r.pw_status or '')
+                en_putaway = pw_status in ('WAITING_STORAGE_TO', 'WAITING_FINISH')
+                sla_mins   = int((now_dt - pw_ini).total_seconds() / 60) if pw_ini else mins_since_chk
+                sla = 'over' if (sla_mins and sla_mins >= SLA_WARN) else ('pw_active' if en_putaway else 'ok')
+                mins_restantes = (SLA_WARN - mins_since_chk) if mins_since_chk is not None else None
+
+                def fmt_ts(dt):
+                    return str(dt)[:16].replace('T', ' ') if dt else ''
+
+                items.append({
+                    'inbound_id':   str(r.INBOUND_ID or ''),
+                    'sku':          r.INVENTORY_ID or '',
+                    'seller':       r.seller or '',
+                    'qty_dec':      int(r.qty_declarada or 0),
+                    'qty_chk':      int(r.qty_checkin or 0),
+                    'qty_pw':       int(r.qty_putaway or 0),
+                    'chk_user':     str(r.chk_user_id or ''),
+                    'pw_user':      str(r.pw_user_id or ''),
+                    'chk_ts':       fmt_ts(chk_ts),
+                    'pw_inicio_ts': fmt_ts(pw_ini_ts),
+                    'pw_fin_ts':    fmt_ts(pw_fin_ts),
+                    'chk_status':   r.chk_status or '',
+                    'pw_status':    r.pw_status or '',
+                    'estado':       r.estado or '',
+                    'tipo':         r.tipo or '',
+                    'movable':      r.movable_pw or '',
+                    'is_id':        str(int(r.is_id)) if r.is_id else '',
+                    'mins_since_chk': mins_since_chk,
+                    'mins_to_pw':     mins_to_pw,
+                    'mins_pw_dur':    mins_pw_dur,
+                    'mins_restantes': mins_restantes,
+                    'en_putaway':     en_putaway,
+                    'sla':            sla,
+                    'is_nt':          '-NT-' in (r.movable_pw or ''),
+                })
+
     en_pw      = sum(1 for x in items if x['en_putaway'])
     pendientes = sum(1 for x in items if x['sla'] in ('ok','warn','unknown'))
     over_sla   = sum(1 for x in items if x['sla'] == 'over')
