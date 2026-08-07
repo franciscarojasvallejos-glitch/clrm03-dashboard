@@ -32,6 +32,9 @@ jobs:
           echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/sa_key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json" >> $GITHUB_ENV
 
+      - name: Generar checkin/putaway inbound JSON
+        run: python generar_checkin_json.py --dias 3
+
       - name: Generar putaway JSON
         run: python generar_putaway_json.py
 

@@ -487,6 +487,13 @@ setInterval(()=>{
   cdLeft--;cdEl().textContent=cdLeft;
   if(cdLeft<=0){cdLeft=AUTO_INTERVAL;loadData();}
 },1000);
+// Ticker de SLA en vivo — re-renderiza la tabla putaway cada 60s sin recargar JSON
+setInterval(()=>{
+  if(typeof renderPutawaySLA==='function'){
+    const tabPw=document.getElementById('tab-chk');
+    if(tabPw&&tabPw.classList.contains('active')) renderPutawaySLA();
+  }
+},60000);
 function toggleAuto(){
   autoOn=!autoOn;cdLeft=AUTO_INTERVAL;
   document.getElementById('autoref').classList.toggle('active',autoOn);
@@ -1993,14 +2000,29 @@ function renderPutawaySLA(){
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
 
+  // Convierte pw_created (hora Santiago) a timestamp ms
+  function pwCreatedMs(g){
+    if(!g.pw_created) return null;
+    // Santiago = UTC-4 en horario de invierno / UTC-3 verano
+    // Usamos offset fijo -4h (conservador) ya que el error es < 1h y los valores son de días
+    return new Date(g.pw_created.replace(' ','T') + '-04:00').getTime();
+  }
+
+  // Minutos transcurridos desde pw_created (En proceso — en vivo)
+  function liveEnProceso(g){
+    const t = pwCreatedMs(g);
+    if(t) return Math.round((Date.now() - t) / 60000);
+    return g.mins_en_proceso ?? g.mins_since_chk;
+  }
+
   // Recalcula mins_restantes en vivo usando expire_at_date de WMS (exacto) o pw_created+48h (fallback)
   function liveMins(g){
     if(g.expire_at_date){
       return Math.round((new Date(g.expire_at_date).getTime() - Date.now()) / 60000);
     }
-    if(!g.pw_created) return g.mins_restantes;
-    const created = new Date(g.pw_created.replace(' ','T') + 'Z');
-    return Math.round((new Date(created.getTime() + 48*60*60*1000).getTime() - Date.now()) / 60000);
+    const t = pwCreatedMs(g);
+    if(!t) return g.mins_restantes;
+    return Math.round((t + 48*60*60*1000 - Date.now()) / 60000);
   }
 
   // Agrupar por hora de appointment (igual que WMS)
@@ -2095,7 +2117,7 @@ function renderPutawaySLA(){
           </div>
         </td>
         <td style="padding:7px 8px;white-space:nowrap">${slaBadge(liveMins(g))}</td>
-        <td style="padding:7px 8px;color:#666666;white-space:nowrap">${fmtHoras(g.mins_en_proceso??g.mins_since_chk)}</td>
+        <td style="padding:7px 8px;color:#666666;white-space:nowrap">${fmtHoras(liveEnProceso(g))}</td>
         <td style="padding:7px 8px;font-family:monospace;font-weight:700;color:#F5A623;font-size:10px">${g.is_id||'—'}</td>
         <td style="padding:7px 8px;color:#999999;font-size:10px">${tipo}</td>
         <td style="padding:7px 8px;color:#666666;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.seller||'—'}</td>
