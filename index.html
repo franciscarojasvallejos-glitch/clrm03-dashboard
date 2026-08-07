@@ -1905,6 +1905,34 @@ async function loadCheckin(){
 // filtro activo de movable
 let PW_MOVABLE_FILTER=null;
 
+// ── Helpers de SLA globales (usados en renderPutawaySLA y pwShowMovablePopup) ─
+function pwCreatedMs(g){
+  if(!g.pw_created) return null;
+  return new Date(g.pw_created.replace(' ','T') + '-04:00').getTime();
+}
+function liveEnProceso(g){
+  const t = pwCreatedMs(g);
+  if(t) return Math.round((Date.now() - t) / 60000);
+  return g.mins_en_proceso ?? g.mins_since_chk;
+}
+function liveMins(g){
+  if(g.expire_at_date){
+    return Math.round((new Date(g.expire_at_date).getTime() - Date.now()) / 60000);
+  }
+  const t = pwCreatedMs(g);
+  if(!t) return g.mins_restantes;
+  return Math.round((t + 48*60*60*1000 - Date.now()) / 60000);
+}
+function slaBadge(mins){
+  if(mins==null) return `<span style="font-size:9px;color:#999999">—</span>`;
+  const abs=Math.abs(mins);
+  const h=Math.floor(abs/60), m=abs%60;
+  const txt=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}hr`;
+  if(mins<0) return `<span style="display:inline-block;padding:2px 7px;border-radius:12px;background:#F23D4F;color:#fff;font-size:9px;font-weight:700">${txt}</span>`;
+  const bg=mins<360?'#FF7A00':mins<720?'#F5A623':'#00A650';
+  return `<span style="display:inline-block;padding:2px 7px;border-radius:12px;background:${bg};color:#fff;font-size:9px;font-weight:700">${txt}</span>`;
+}
+
 function renderPutawaySLA(){
   const hdr=document.getElementById('chk-det-hdr');
   const body=document.getElementById('chk-det-body');
@@ -1999,31 +2027,6 @@ function renderPutawaySLA(){
   </div>`;
 
   if(PW_VIEW==='is'){ renderInboundIS(); return; }
-
-  // Convierte pw_created (hora Santiago) a timestamp ms
-  function pwCreatedMs(g){
-    if(!g.pw_created) return null;
-    // Santiago = UTC-4 en horario de invierno / UTC-3 verano
-    // Usamos offset fijo -4h (conservador) ya que el error es < 1h y los valores son de días
-    return new Date(g.pw_created.replace(' ','T') + '-04:00').getTime();
-  }
-
-  // Minutos transcurridos desde pw_created (En proceso — en vivo)
-  function liveEnProceso(g){
-    const t = pwCreatedMs(g);
-    if(t) return Math.round((Date.now() - t) / 60000);
-    return g.mins_en_proceso ?? g.mins_since_chk;
-  }
-
-  // Recalcula mins_restantes en vivo usando expire_at_date de WMS (exacto) o pw_created+48h (fallback)
-  function liveMins(g){
-    if(g.expire_at_date){
-      return Math.round((new Date(g.expire_at_date).getTime() - Date.now()) / 60000);
-    }
-    const t = pwCreatedMs(g);
-    if(!t) return g.mins_restantes;
-    return Math.round((t + 48*60*60*1000 - Date.now()) / 60000);
-  }
 
   // Agrupar por hora de appointment (igual que WMS)
   function apptSlot(g){
