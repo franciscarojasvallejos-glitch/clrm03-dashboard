@@ -44,7 +44,7 @@ def generate():
     now  = datetime.now(tz=ZoneInfo('America/Santiago'))
     now_utc   = datetime.now(tz=timezone.utc).replace(tzinfo=None)  # UTC naive
     now_naive = now.replace(tzinfo=None)                              # Chile local — para mins_en_proceso
-    desde = (now - timedelta(days=60)).strftime('%Y-%m-%d')
+    desde = (now - timedelta(days=365)).strftime('%Y-%m-%d')
 
     wms_expire = load_wms_expire()
     print(f"  WMS expire_at cargado: {len(wms_expire)} movables", flush=True)
@@ -66,7 +66,7 @@ def generate():
     FROM `{PROJECT}.WHOWNER.BT_FBM_PUTAWAY` pw
     WHERE pw.WAREHOUSE_ID = '{WH}'
       AND pw.AUD_INS_DT  >= '{desde}'
-      AND pw.PW_STATUS IN ('WAITING_START', 'WAITING_FINISH')
+      AND pw.PW_STATUS IN ('WAITING_START', 'WAITING_STORAGE_TO', 'WAITING_FINISH')
     GROUP BY 1,2,3,4,5,6,7
     ORDER BY pw.AUD_INS_DT ASC
     """
@@ -93,7 +93,6 @@ def generate():
         FROM `{PROJECT}.WHOWNER.BT_FBM_INBOUND_OPERATION` op
         WHERE op.WAREHOUSE_ID = '{WH}'
           AND op.SIT_SITE_ID  = 'MLC'
-          AND op.AUD_INS_DT  >= '{desde}'
           AND CAST(op.INBOUND_ID AS STRING) IN ({ids_str})
         GROUP BY 1
         """
