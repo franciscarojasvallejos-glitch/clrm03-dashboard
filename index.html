@@ -2197,6 +2197,14 @@ function pwShowMovablePopup(mv){
   const panelProductos  = _productosMovable(list, pw);
   const panelSugerencias= _sugerenciasGuardado(isNT, movSkus);
 
+  // Resumen dimensiones máximas del movable
+  const dims = _maxProductDims(movSkus);
+  const dimsHtml = dims
+    ? `<div style="font-size:8px;color:#555;background:#F8F8F8;border-radius:4px;padding:3px 7px;margin-bottom:6px;display:inline-block">
+        📐 Máx: ${dims.h>0?dims.h+'cm H ':''}${dims.l>0?dims.l+'cm L ':''}${dims.w>0?dims.w+'cm W ':''}${dims.kg>0?'· '+dims.kg+'kg':''}
+       </div>`
+    : '';
+
   const content = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div>
@@ -2224,6 +2232,7 @@ function pwShowMovablePopup(mv){
     <div style="font-size:10px;font-weight:700;color:#333;margin-bottom:6px;padding-bottom:5px;border-bottom:2px solid #E8E8E8">
       📍 Sugerencias de guardado
     </div>
+    ${dimsHtml}
     <div style="margin-bottom:14px">${panelSugerencias}</div>
 
     ${wmsUrl?`<a href="${wmsUrl}" target="_blank" style="display:block;text-align:center;font-size:10px;padding:7px;border-radius:6px;background:#EBF2FF;color:#3483FA;text-decoration:none;border:1px solid #2968C8;font-weight:600">🔗 Ver IS ${isId} en WMS</a>`:''}
@@ -2404,9 +2413,50 @@ const RK_LOW_DOMAINS = new Set([
   'MLC-PET_FOOD',
 ]);
 
+// Dimensiones (cm/kg) por clase de ubicación en CLRM03
+// RK-027/028/029 no están en BT_FBM_ADDRESS_DIMENSIONS → estimadas por proximidad con RK-025-V2
+const SLOT_DIMS = {
+  'BL':      {h:100, w:120, d:100, kg:1000},
+  'BL_01':   {h:160, w:100, d:120, kg:1000},
+  'RK_001':  {h:156, w:100, d:120, kg:1000},
+  'RK_ALTO': {h:154, w:100, d:120, kg:1000},
+  'RK_BAJO': {h:158, w:100, d:120, kg:1000},
+  'RK-025-V2':{h:135,w:100, d:120, kg:1000},
+  'RK-026-V2':{h:131,w:100, d:120, kg:1000},
+  'RK-027':  {h:135, w:100, d:120, kg:1000},
+  'RK-028':  {h:135, w:100, d:120, kg:1000},
+  'RK-029':  {h:135, w:100, d:120, kg:1000},
+  'FL-002':  {h:200, w:200, d:200, kg:5000},
+};
+
+function _maxProductDims(skuList){
+  let h=0, l=0, w=0, kg=0, count=0;
+  (skuList||[]).forEach(sk=>{
+    const c=CATALOG[sk]||{};
+    if(c.dim_h!=null){h=Math.max(h,c.dim_h); count++;}
+    if(c.dim_l!=null) l=Math.max(l,c.dim_l);
+    if(c.dim_w!=null) w=Math.max(w,c.dim_w);
+    if(c.dim_kg!=null) kg=Math.max(kg,c.dim_kg);
+  });
+  return count>0 ? {h,l,w,kg} : null;
+}
+
+function _fitCheck(prodDims, clase){
+  if(!prodDims) return null;  // sin datos = no mostrar indicador
+  const sd = SLOT_DIMS[clase];
+  if(!sd) return null;        // clase desconocida = no mostrar
+  const maxProd = Math.max(prodDims.h, prodDims.l, prodDims.w);
+  const minSlot = Math.min(sd.h, sd.w, sd.d);
+  const overWeight = prodDims.kg > sd.kg;
+  if(overWeight || maxProd > sd.h) return 'rojo';
+  if(maxProd > minSlot * 0.8)      return 'amarillo';
+  return 'verde';
+}
+
 function _sugerenciasGuardado(isNT, skuList){
   const skus = skuList || [];
   const dominios = skus.map(sk=>(CATALOG[sk]||{}).domain||'').filter(Boolean);
+  const prodDims = _maxProductDims(skus);
 
   const blMatches  = dominios.filter(d=>BL_AFFINITY_DOMAINS.has(d));
   const rkLowMatches = dominios.filter(d=>RK_LOW_DOMAINS.has(d));
@@ -2417,6 +2467,13 @@ function _sugerenciasGuardado(isNT, skuList){
 
   const candidatos = [];
 
+  function _bayClase(b){
+    const clases = b.slots.map(s=>s.clase||'').filter(Boolean);
+    if(!clases.length) return b.zone==='BL'?'BL_01':'RK-027';
+    const freq={}; clases.forEach(c=>{freq[c]=(freq[c]||0)+1;});
+    return Object.entries(freq).sort((a,b2)=>b2[1]-a[1])[0][0];
+  }
+
   if(esBL){
     Object.values(bayMap).forEach(b=>{
       if(b.zone!=='BL') return;
@@ -2425,20 +2482,17 @@ function _sugerenciasGuardado(isNT, skuList){
       if(!vacios) return;
       const pct = Math.round((total-vacios)/total*100);
       const bayLabel = b.key || `BL-${b.aisle}-${String(b.bay).padStart(3,'0')}`;
-      candidatos.push({bayLabel, zona:'BL', libres:vacios, total, pct});
+      const clase = _bayClase(b);
+      candidatos.push({bayLabel, zona:'BL', libres:vacios, total, pct, clase});
     });
     candidatos.sort((a,b2)=>b2.libres-a.libres||a.pct-b2.pct);
 
   } else if(esRKLow){
-    // RK bajo: nivel 1-2, preferir primeros pasillos de cada zona
-    // Z-A P005-P012, Z-A2 P013-P018, Z-B P101-P123
-    // "primeros" = aisles más bajos dentro de cada zona
     const FIRST_AISLES = {ZA:[5,6,7,8,9,10], ZA2:[13,14,15,16], ZB:[101,102,103,104,105,106,107,108]};
     const allFirstAisles = new Set([...FIRST_AISLES.ZA,...FIRST_AISLES.ZA2,...FIRST_AISLES.ZB]);
     Object.values(bayMap).forEach(b=>{
       if(b.zone!=='RK') return;
       const esFirstAisle = allFirstAisles.has(b.aisle);
-      // Slots de nivel 1-2 disponibles
       const slotsLow = b.slots.filter(s=>s.level<=2);
       const libresLow = slotsLow.filter(s=>!s.skus||s.skus.length===0).length;
       if(!libresLow) return;
@@ -2446,13 +2500,12 @@ function _sugerenciasGuardado(isNT, skuList){
       const pct = Math.round((totalLow-libresLow)/totalLow*100);
       const zona = b.aisle>=101?'Z-B':b.aisle>=13?'Z-A2':'Z-A';
       const bayLabel = `P${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
-      // Dar prioridad a primeros pasillos
-      candidatos.push({bayLabel, zona, libres:libresLow, total:totalLow, pct, prioridad: esFirstAisle?1:0});
+      const clase = _bayClase(b);
+      candidatos.push({bayLabel, zona, libres:libresLow, total:totalLow, pct, prioridad: esFirstAisle?1:0, clase});
     });
     candidatos.sort((a,b2)=>b2.prioridad-a.prioridad||b2.libres-a.libres||a.pct-b2.pct);
 
   } else {
-    // RK normal: NT → solo Z-B, resto → cualquier RK
     Object.values(bayMap).forEach(b=>{
       if(b.zone!=='RK') return;
       if(isNT && (b.aisle<101||b.aisle>123)) return;
@@ -2464,7 +2517,8 @@ function _sugerenciasGuardado(isNT, skuList){
       const pct = Math.round(ocupados/total*100);
       const zona = b.aisle>=101?'Z-B':b.aisle>=13?'Z-A2':'Z-A';
       const bayLabel = `P${String(b.aisle).padStart(3,'0')}-${String(b.bay).padStart(3,'0')}`;
-      candidatos.push({bayLabel, zona, libres, total, pct});
+      const clase = _bayClase(b);
+      candidatos.push({bayLabel, zona, libres, total, pct, clase});
     });
     candidatos.sort((a,b2)=>b2.libres-a.libres||a.pct-b2.pct);
   }
@@ -2487,10 +2541,15 @@ function _sugerenciasGuardado(isNT, skuList){
   const filas = top.map(c=>{
     const bar = `<div style="height:4px;border-radius:2px;background:#EEEEEE;margin-top:2px"><div style="width:${c.pct}%;height:4px;border-radius:2px;background:${c.pct>80?'#F23D4F':c.pct>50?'#F5A623':'#00A650'}"></div></div>`;
     const nivelTag = esRKLow?`<span style="font-size:7px;color:#00A650;background:#F0FFF4;border-radius:3px;padding:1px 4px;border:1px solid #00A650">N1-2</span>`:'';
+    const fit = _fitCheck(prodDims, c.clase||'');
+    const fitTag = fit==='verde' ? `<span title="Producto cabe en esta ubicación" style="font-size:9px">✅</span>`
+                 : fit==='amarillo' ? `<span title="Verificar tamaño antes de guardar" style="font-size:9px">⚠️</span>`
+                 : fit==='rojo' ? `<span title="Producto puede no caber — verificar dimensiones" style="font-size:9px">🚫</span>`
+                 : '';
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F0F0F0">
       <span style="font-family:monospace;font-size:10px;font-weight:700;color:${col};min-width:80px">${c.bayLabel}</span>
       <span style="font-size:8px;color:#999999;min-width:28px">${c.zona}</span>
-      ${nivelTag}
+      ${nivelTag}${fitTag}
       <div style="flex:1">${bar}</div>
       <span style="font-size:9px;color:#00A650;font-weight:700;white-space:nowrap">${c.libres} lib.</span>
       <span style="font-size:8px;color:#999999">${c.pct}% lleno</span>
@@ -2548,6 +2607,10 @@ function chkRenderMovable(){
   const movSkus=list.map(o=>o.sku);
   const panelProductos=_productosMovable(list,pw);
   const panelSugerencias=_sugerenciasGuardado(isNT, movSkus);
+  const dims2=_maxProductDims(movSkus);
+  const dimsHtml2=dims2
+    ?`<div style="font-size:8px;color:#555;background:#F8F8F8;border-radius:4px;padding:3px 7px;margin-bottom:6px;display:inline-block">📐 Máx: ${dims2.h>0?dims2.h+'cm H ':''}${dims2.l>0?dims2.l+'cm L ':''}${dims2.w>0?dims2.w+'cm W ':''}${dims2.kg>0?'· '+dims2.kg+'kg':''}</div>`
+    :'';
 
   const infoCard=`
     <div style="background:#FFFFFF;border:1px solid #D9D9D9;border-radius:8px;padding:12px 14px;max-width:560px;margin:0 auto">
@@ -2566,6 +2629,7 @@ function chkRenderMovable(){
       <div style="font-size:9px;font-weight:700;color:#333333;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #E8E8E8">
         📍 Sugerencias de guardado
       </div>
+      ${dimsHtml2}
       <div style="margin-bottom:8px">${panelSugerencias}</div>
 
       ${wmsUrl?`<a href="${wmsUrl}" target="_blank" style="display:block;text-align:center;font-size:9px;padding:5px;border-radius:6px;background:#F5F5F5;color:#3483FA;text-decoration:none;border:1px solid #2968C8;margin-top:4px">🔗 Ver IS ${isId} en WMS</a>`:''}
