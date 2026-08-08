@@ -1908,8 +1908,8 @@ let PW_MOVABLE_FILTER=null;
 // ── Helpers de SLA globales (usados en renderPutawaySLA y pwShowMovablePopup) ─
 function pwCreatedMs(g){
   if(!g.pw_created) return null;
-  // pw_created es PW_CREATED_DATETIME de BQ: UTC sin indicador de zona
-  return new Date(g.pw_created.replace(' ','T') + '+00:00').getTime();
+  // pw_created es PW_CREATED_DATETIME de BQ: hora local Santiago (UTC-4 invierno)
+  return new Date(g.pw_created.replace(' ','T') + '-04:00').getTime();
 }
 function liveEnProceso(g){
   const t = pwCreatedMs(g);

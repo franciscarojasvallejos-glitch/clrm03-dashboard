@@ -22,7 +22,7 @@ WMS_FILE = os.path.join(DATA_DIR, 'wms_totes_completo.json')
 SLA_WARN = 48 * 60  # fallback: 48h en minutos
 
 def load_wms_expire():
-    """Carga expire_at_date real de WMS por movable."""
+    """Carga expire_at_date real de WMS por movable (retorna UTC-aware datetimes)."""
     if not os.path.exists(WMS_FILE):
         return {}
     with open(WMS_FILE, encoding='utf-8') as f:
@@ -32,10 +32,9 @@ def load_wms_expire():
         mov = t.get('movable', '')
         exp = t.get('expire_at_date', '')
         if mov and exp:
-            # Parsear ISO 8601 con offset +0000
             try:
-                dt = datetime.fromisoformat(exp.replace('+0000', '+00:00')).replace(tzinfo=None)
-                lookup[mov] = dt  # UTC naive
+                dt = datetime.fromisoformat(exp.replace('+0000', '+00:00'))
+                lookup[mov] = dt.astimezone(ZoneInfo('America/Santiago')).replace(tzinfo=None)  # Santiago naive
             except Exception:
                 pass
     return lookup
@@ -111,24 +110,36 @@ def generate():
         is_nt = '-NT-' in (r.movable or '')
         inb   = is_data.get(r.is_id, None)
 
-        # mins_en_proceso: WMS usa hora_chile_ahora - pw_created_utc
-        # mins_restantes: usa expire_at_date real de WMS si disponible, sino pw_created + 48h
+        # Todos los datetimes de BQ (PW_CREATED_DATETIME, CHK_CREATED_DATETIME) están en hora Santiago.
+        # now_naive también es Santiago → comparar directamente sin conversión UTC.
         pw_dt = r.pw_created_dt
         if pw_dt:
-            pw_utc = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
-            mins_en_proceso = int((now_utc - pw_utc).total_seconds() / 60)
-            # Deadline: WMS expire_at_date tiene prioridad sobre estimación 48h
-            wms_deadline = wms_expire.get(r.movable)
-            deadline = wms_deadline if wms_deadline else pw_utc + timedelta(minutes=SLA_WARN)
-            mins_restantes = int((deadline - now_utc).total_seconds() / 60)
+            pw_naive = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
+            mins_en_proceso = int((now_naive - pw_naive).total_seconds() / 60)
+
+            # Deadline SLA: prioridad WMS > oldest_chk+48h > pw_created+48h
+            # oldest_chk = MIN(CHK_CREATED_DATETIME) del IS → mismo 48h que usa el WMS
+            wms_deadline = wms_expire.get(r.movable)  # Santiago naive si existe
+            if wms_deadline:
+                deadline = wms_deadline
+                wms_exact = True
+            elif inb and inb.oldest_chk:
+                chk_naive = inb.oldest_chk.replace(tzinfo=None) if isinstance(inb.oldest_chk, datetime) else datetime.fromisoformat(str(inb.oldest_chk)).replace(tzinfo=None)
+                deadline = chk_naive + timedelta(minutes=SLA_WARN)
+                wms_exact = False
+            else:
+                deadline = pw_naive + timedelta(minutes=SLA_WARN)
+                wms_exact = False
+
+            mins_restantes = int((deadline - now_naive).total_seconds() / 60)
             sla = 'over' if mins_restantes < 0 else ('warn' if mins_restantes < 120 else 'ok')
-            wms_exact = wms_deadline is not None
         else:
-            pw_utc = None
+            pw_naive = None
             mins_en_proceso = None
             mins_restantes = None
             sla = 'unknown'
             wms_exact = False
+            deadline = None
 
         mins_since = mins_en_proceso  # alias para compatibilidad con dashboard
 
@@ -146,7 +157,7 @@ def generate():
             'appointment':    fmt(inb.appointment_dt) if inb else None,
             'arrival':        fmt(inb.arrival_dt) if inb else None,
             'pw_created':     fmt(r.pw_created_dt),
-            'expire_at_date': wms_deadline.strftime('%Y-%m-%dT%H:%M:%S+00:00') if (pw_dt and wms_deadline) else None,
+            'expire_at_date': deadline.strftime('%Y-%m-%dT%H:%M:%S-04:00') if deadline else None,
             'mins_en_proceso': mins_en_proceso,
             'mins_since_chk': mins_since,
             'mins_restantes': mins_restantes,
