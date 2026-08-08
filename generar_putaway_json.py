@@ -19,7 +19,7 @@ DATA_DIR = os.path.join(BASE, 'data')
 OUT_FILE = os.path.join(DATA_DIR, f'putaway_{WH}.json')
 WMS_FILE = os.path.join(DATA_DIR, 'wms_totes_completo.json')
 
-SLA_WARN = 48 * 60  # fallback: 48h en minutos
+SLA_WARN = 24 * 60  # SLA putaway CLRM03: 24h desde primer checkin
 
 def load_wms_expire():
     """Carga expire_at_date real de WMS por movable (retorna UTC-aware datetimes)."""
