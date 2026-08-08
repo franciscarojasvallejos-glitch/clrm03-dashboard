@@ -116,7 +116,7 @@ def generate():
         pw_dt = r.pw_created_dt
         if pw_dt:
             pw_utc = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
-            mins_en_proceso = int((now_naive - pw_utc).total_seconds() / 60)
+            mins_en_proceso = int((now_utc - pw_utc).total_seconds() / 60)
             # Deadline: WMS expire_at_date tiene prioridad sobre estimación 48h
             wms_deadline = wms_expire.get(r.movable)
             deadline = wms_deadline if wms_deadline else pw_utc + timedelta(minutes=SLA_WARN)
