@@ -1922,7 +1922,7 @@ function liveMins(g){
   }
   const t = pwCreatedMs(g);
   if(!t) return g.mins_restantes;
-  return Math.round((t + 24*60*60*1000 - Date.now()) / 60000);
+  return Math.round((t + 48*60*60*1000 - Date.now()) / 60000);
 }
 function slaBadge(mins){
   if(mins==null) return `<span style="font-size:9px;color:#999999">—</span>`;

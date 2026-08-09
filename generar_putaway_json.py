@@ -19,7 +19,8 @@ DATA_DIR = os.path.join(BASE, 'data')
 OUT_FILE = os.path.join(DATA_DIR, f'putaway_{WH}.json')
 WMS_FILE = os.path.join(DATA_DIR, 'wms_totes_completo.json')
 
-SLA_WARN = 24 * 60  # SLA putaway CLRM03: 24h desde primer checkin
+SLA_WARN    = 48 * 60  # SLA pickup: 48h desde primer checkin (oldest_chk)
+SLA_WARN_FTL = 72 * 60  # SLA FTL:    72h desde arrival_dt
 
 def load_wms_expire():
     """Carga expire_at_date real de WMS por movable (retorna UTC-aware datetimes)."""
@@ -117,8 +118,11 @@ def generate():
             pw_naive = pw_dt.replace(tzinfo=None) if isinstance(pw_dt, datetime) else datetime.fromisoformat(str(pw_dt)).replace(tzinfo=None)
             mins_en_proceso = int((now_naive - pw_naive).total_seconds() / 60)
 
-            # Deadline SLA: prioridad WMS > oldest_chk+48h > pw_created+48h
-            # oldest_chk = MIN(CHK_CREATED_DATETIME) del IS → mismo 48h que usa el WMS
+            # Deadline SLA:
+            #   pickup: oldest_chk + 48h (MIN CHK_CREATED_DATETIME)
+            #   ftl:    arrival_dt  + 72h (oldest_chk no disponible en BQ para FTL)
+            #   fallback: pw_naive + 48h
+            shipment = (inb.shipment_type or '') if inb else ''
             wms_deadline = wms_expire.get(r.movable)  # Santiago naive si existe
             if wms_deadline:
                 deadline = wms_deadline
@@ -126,6 +130,10 @@ def generate():
             elif inb and inb.oldest_chk:
                 chk_naive = inb.oldest_chk.replace(tzinfo=None) if isinstance(inb.oldest_chk, datetime) else datetime.fromisoformat(str(inb.oldest_chk)).replace(tzinfo=None)
                 deadline = chk_naive + timedelta(minutes=SLA_WARN)
+                wms_exact = False
+            elif inb and inb.arrival_dt and shipment == 'ftl':
+                arr_naive = inb.arrival_dt.replace(tzinfo=None) if isinstance(inb.arrival_dt, datetime) else datetime.fromisoformat(str(inb.arrival_dt)).replace(tzinfo=None)
+                deadline = arr_naive + timedelta(minutes=SLA_WARN_FTL)
                 wms_exact = False
             else:
                 deadline = pw_naive + timedelta(minutes=SLA_WARN)
