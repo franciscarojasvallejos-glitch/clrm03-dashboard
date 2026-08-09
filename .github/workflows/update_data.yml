@@ -3,7 +3,10 @@ name: Actualizar datos CLRM03
 on:
   schedule:
     - cron: '*/5 * * * *'   # cada 5 minutos (~8,640 runs/mes, dentro del límite gratuito)
-  workflow_dispatch:          # también permite correrlo manualmente desde GitHub
+  workflow_dispatch:          # permite correrlo manualmente desde GitHub
+  push:
+    paths:
+      - 'data/wms_totes_completo.json'  # Tampermonkey pushea → Actions regenera al instante
 
 permissions:
   contents: write
