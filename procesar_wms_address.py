@@ -43,15 +43,17 @@ def process():
             sid = slot['id']
             if sid in wms_idx:
                 w = wms_idx[sid]
-                # Siempre actualizar stock desde WMS (dato en tiempo real)
                 slot['qty']   = w.get('stock', 0)
                 slot['avail'] = w.get('available', 0)
-                # Solo actualizar SKUs si WMS los trae; si no, conservar los de BQ
+                # Dimensiones del producto almacenado (desde WMS)
+                for dim in ('dim_w', 'dim_h', 'dim_l', 'dim_kg'):
+                    if w.get(dim) is not None:
+                        slot[dim] = w[dim]
+                # Solo actualizar SKUs si WMS los trae
                 wms_skus = w.get('skus', [])
                 if wms_skus:
                     slot['skus']        = wms_skus
                     slot['sku_details'] = w.get('sku_details', {})
-                    # sku_qtys viene de BQ — se preserva si WMS no lo trae
                 slot_updated += 1
             else:
                 slot_cleared += 1  # sin cambios — BQ mantiene sus datos
