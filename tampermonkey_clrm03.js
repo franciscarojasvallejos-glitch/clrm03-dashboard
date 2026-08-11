@@ -90,18 +90,29 @@
 
   async function pushToGitHub(filePath, data, token, commitMsg) {
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 0))));
-    let sha;
-    try {
-      const current = await ghRequest('GET',
-        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`,
-        null, token);
-      sha = current.sha;
-    } catch (e) { sha = undefined; }
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let sha;
+      try {
+        const current = await ghRequest('GET',
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`,
+          null, token);
+        sha = current.sha;
+      } catch (e) { sha = undefined; }
 
-    await ghRequest('PUT',
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
-      { message: commitMsg, content, branch: GITHUB_BRANCH, ...(sha ? { sha } : {}) },
-      token);
+      try {
+        await ghRequest('PUT',
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
+          { message: commitMsg, content, branch: GITHUB_BRANCH, ...(sha ? { sha } : {}) },
+          token);
+        return; // éxito
+      } catch (e) {
+        if (attempt < 3 && (e.message.includes('does not match') || e.message.includes('409'))) {
+          await new Promise(r => setTimeout(r, 1500)); // esperar y reintentar con SHA fresco
+        } else {
+          throw e;
+        }
+      }
+    }
   }
 
   // ── TOTES extractor ───────────────────────────────────────────────────────
