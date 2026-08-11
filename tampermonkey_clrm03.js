@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         CLRM03 Dashboard — Auto Update (GitHub direct)
 // @namespace    https://wms.adminml.com
-// @version      2.0
-// @description  Extrae totes de WMS y pushea wms_totes_completo.json directo a GitHub
+// @version      3.0
+// @description  Extrae totes y address de WMS y pushea directo a GitHub
 // @match        https://wms.adminml.com/reports/totes*
+// @match        https://wms.adminml.com/reports/address*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -13,15 +14,9 @@
 (function () {
   'use strict';
 
-  // ── CONFIGURACIÓN ─────────────────────────────────────────────────────────
-  const GITHUB_OWNER = 'franciscarojasvallejos-glitch';
-  const GITHUB_REPO  = 'clrm03-dashboard';
-  const GITHUB_FILE  = 'data/wms_totes_completo.json';
+  const GITHUB_OWNER  = 'franciscarojasvallejos-glitch';
+  const GITHUB_REPO   = 'clrm03-dashboard';
   const GITHUB_BRANCH = 'main';
-  // Token GitHub con permiso "repo" (Contents: write)
-  // Generar en: https://github.com/settings/tokens → Fine-grained → Contents: Read & Write
-  const GITHUB_TOKEN = GM_getValue('gh_token', '');
-  // ──────────────────────────────────────────────────────────────────────────
 
   // ── UI badge ─────────────────────────────────────────────────────────────
   const badge = document.createElement('div');
@@ -37,7 +32,14 @@
     <div id="clrm03-msg">Iniciando...</div>
     <div id="clrm03-sub" style="color:#8b949e;font-size:11px"></div>
   `;
-  document.body.appendChild(badge);
+
+  function mountBadge() {
+    const container = document.body || document.documentElement;
+    if (!document.getElementById('clrm03-badge-root')) {
+      badge.id = 'clrm03-badge-root';
+      container.appendChild(badge);
+    }
+  }
 
   function msg(text, color = '#e6edf3', sub = '') {
     badge.querySelector('#clrm03-msg').style.color = color;
@@ -45,22 +47,21 @@
     badge.querySelector('#clrm03-sub').textContent  = sub;
   }
 
-  // ── Token check + prompt ─────────────────────────────────────────────────
+  // ── Token ────────────────────────────────────────────────────────────────
   function ensureToken() {
-    if (GITHUB_TOKEN) return GITHUB_TOKEN;
-    const t = prompt(
-      'CLRM03 Dashboard\n\nIngresa tu GitHub Personal Access Token\n' +
-      '(Fine-grained, repo: Contents Read & Write)\n\n' +
-      'Generar en: github.com/settings/tokens'
+    const t = GM_getValue('gh_token_v2', '');
+    if (t) return t;
+    const input = prompt(
+      'CLRM03 Dashboard\n\nIngresa tu GitHub Personal Access Token\n(Classic, scope: repo)\n\nGenerar en: github.com/settings/tokens'
     );
-    if (t && t.trim()) {
-      GM_setValue('gh_token', t.trim());
-      return t.trim();
+    if (input && input.trim()) {
+      GM_setValue('gh_token_v2', input.trim());
+      return input.trim();
     }
     return null;
   }
 
-  // ── GitHub API helpers ───────────────────────────────────────────────────
+  // ── GitHub API ───────────────────────────────────────────────────────────
   function ghRequest(method, path, body, token) {
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
@@ -79,9 +80,7 @@
             const parsed = JSON.parse(r.responseText);
             if (r.status >= 400) reject(new Error(parsed.message || `HTTP ${r.status}`));
             else resolve(parsed);
-          } catch (e) {
-            reject(new Error('Respuesta inválida de GitHub API'));
-          }
+          } catch (e) { reject(new Error('Respuesta inválida de GitHub API')); }
         },
         onerror:   () => reject(new Error('Error de red al conectar a GitHub API')),
         ontimeout: () => reject(new Error('Timeout en GitHub API')),
@@ -89,37 +88,23 @@
     });
   }
 
-  async function pushToGitHub(data, token) {
+  async function pushToGitHub(filePath, data, token, commitMsg) {
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 0))));
-    // Obtener SHA actual del archivo (necesario para actualizar)
     let sha;
     try {
-      const current = await ghRequest(
-        'GET',
-        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}?ref=${GITHUB_BRANCH}`,
-        null, token
-      );
+      const current = await ghRequest('GET',
+        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`,
+        null, token);
       sha = current.sha;
-    } catch (e) {
-      // El archivo no existe aún — se crea nuevo
-      sha = undefined;
-    }
+    } catch (e) { sha = undefined; }
 
-    const now = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
-    await ghRequest(
-      'PUT',
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
-      {
-        message: `wms: totes actualizados ${now} (Tampermonkey)`,
-        content,
-        branch: GITHUB_BRANCH,
-        ...(sha ? { sha } : {}),
-      },
-      token
-    );
+    await ghRequest('PUT',
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
+      { message: commitMsg, content, branch: GITHUB_BRANCH, ...(sha ? { sha } : {}) },
+      token);
   }
 
-  // ── Totes extractor ───────────────────────────────────────────────────────
+  // ── TOTES extractor ───────────────────────────────────────────────────────
   const RE_TOTES = /"address_id":"([^"]+)","inventory_id_list":\[.*?\],"fixed_position":"[^"]*","unlink":[^,]+,"unlink_user_allowed":[^,]+,"created_at":"([^"]+)","lost":[^,]+,"expire_at_date":"([^"]+)","sla":\{"status":"([^"]+)","time_left":"([^"]+)","process_time":"([^"]+)"\}/g;
 
   function extractTotes(html) {
@@ -127,43 +112,83 @@
     let m;
     RE_TOTES.lastIndex = 0;
     while ((m = RE_TOTES.exec(html)) !== null) {
-      out.push({
-        movable:       m[1],
-        created_at:    m[2],
-        expire_at_date: m[3],
-        sla_status:    m[4],
-        time_left:     m[5],
-        process_time:  m[6],
-      });
+      out.push({ movable: m[1], created_at: m[2], expire_at_date: m[3],
+                 sla_status: m[4], time_left: m[5], process_time: m[6] });
     }
     return out;
   }
 
-  // ── Detectar páginas totales ──────────────────────────────────────────────
   function detectPages(html) {
     const nums = [...html.matchAll(/[?&]page=(\d+)/g)].map(x => +x[1]);
     return nums.length ? Math.max(...nums) : 1;
   }
 
-  // ── Paginator ─────────────────────────────────────────────────────────────
-  async function fetchAllPages(maxPages = 999) {
+  async function fetchTotes() {
     const base = 'https://wms.adminml.com/reports/totes?sort=expire_at_date_asc&page=';
     const all  = [];
-
-    const r0    = await fetch(base + '1', { credentials: 'include' });
-    const h0    = await r0.text();
-    const total = Math.min(detectPages(h0), maxPages);
+    const r0   = await fetch(base + '1', { credentials: 'include' });
+    const h0   = await r0.text();
+    const total = Math.min(detectPages(h0), 999);
     all.push(...extractTotes(h0));
-    msg(`Extrayendo: pág 1/${total}`, '#FFD700', `${all.length} totes...`);
-
+    msg(`Totes: pág 1/${total}`, '#FFD700', `${all.length} totes...`);
     for (let p = 2; p <= total; p++) {
       try {
         const r = await fetch(base + p, { credentials: 'include' });
         all.push(...extractTotes(await r.text()));
-      } catch (e) {
-        console.warn('[CLRM03] pág', p, e);
-      }
-      if (p % 5 === 0) msg(`Extrayendo: pág ${p}/${total}`, '#FFD700', `${all.length} totes...`);
+      } catch (e) { console.warn('[CLRM03] totes pág', p, e); }
+      if (p % 5 === 0) msg(`Totes: pág ${p}/${total}`, '#FFD700', `${all.length} totes...`);
+      await new Promise(r => setTimeout(r, 150));
+    }
+    return all;
+  }
+
+  // ── ADDRESS extractor ─────────────────────────────────────────────────────
+  function extractAddress(html) {
+    const out    = [];
+    const startRE = /"address_id":"((?:RK|BL)[^"]+)"/g;
+    let m;
+    while ((m = startRE.exec(html)) !== null) {
+      const chunk  = html.substring(m.index, m.index + 2200);
+      const stock  = (chunk.match(/"stock_quantity":(\d+)/)        || [])[1];
+      const avail  = (chunk.match(/"own_available_quantity":(\d+)/) || [])[1];
+      const res    = (chunk.match(/"reserved_quantity":(\d+)/)      || [])[1];
+      const inv_m  = chunk.match(/"inventory_id_list":\[([^\]]*)\]/);
+      const skus   = inv_m ? inv_m[1].replace(/"/g, '').split(',').filter(Boolean) : [];
+      const w_m    = chunk.match(/"width":\{"value":([\d.]+)/);
+      const h_m    = chunk.match(/"height":\{"value":([\d.]+)/);
+      const l_m    = chunk.match(/"length":\{"value":([\d.]+)/);
+      const kg_m   = chunk.match(/"weight":\{"value":([\d.]+)/);
+      out.push({
+        address_id: m[1],
+        stock:    stock  ? +stock  : 0,
+        available: avail ? +avail  : 0,
+        reserved:  res   ? +res    : 0,
+        skus,
+        dim_w:  w_m  ? +w_m[1]  : null,
+        dim_h:  h_m  ? +h_m[1]  : null,
+        dim_l:  l_m  ? +l_m[1]  : null,
+        dim_kg: kg_m ? +kg_m[1] : null,
+      });
+    }
+    return out;
+  }
+
+  async function fetchAddress(limit = 50) {
+    const all = [];
+    let offset = 0, page = 1;
+    while (true) {
+      const url = `https://wms.adminml.com/reports/address?limit=${limit}&sort=address_id_asc&offset=${offset}`;
+      try {
+        const r = await fetch(url, { credentials: 'include' });
+        const h = await r.text();
+        const batch = extractAddress(h);
+        if (batch.length === 0) break;
+        all.push(...batch);
+        msg(`Address: pág ${page}`, '#FFD700', `${all.length} ubicaciones...`);
+        if (batch.length < limit) break;
+        offset += limit;
+        page++;
+      } catch (e) { console.warn('[CLRM03] address offset', offset, e); break; }
       await new Promise(r => setTimeout(r, 150));
     }
     return all;
@@ -172,33 +197,41 @@
   // ── Main ──────────────────────────────────────────────────────────────────
   async function main() {
     await new Promise(r => setTimeout(r, 1500));
-
-    if (!location.href.includes('/reports/totes')) {
-      msg('Solo activo en /reports/totes', '#8b949e');
-      return;
-    }
+    mountBadge();
+    const url = location.href;
 
     const token = ensureToken();
-    if (!token) {
-      msg('⚠ Sin token GitHub', '#FF7A00', 'Recarga para ingresar token');
-      return;
-    }
+    if (!token) { msg('⚠ Sin token GitHub', '#FF7A00', 'Recarga para ingresar token'); return; }
 
     try {
-      msg('Extrayendo totes de WMS...', '#FFD700');
-      const data = await fetchAllPages();
-      msg(`Subiendo ${data.length} totes a GitHub...`, '#FFD700', 'Esto dispara Actions automáticamente');
+      const now = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
 
-      await pushToGitHub(data, token);
+      if (url.includes('/reports/totes')) {
+        msg('Extrayendo totes...', '#FFD700');
+        const data = await fetchTotes();
+        msg(`Subiendo ${data.length} totes...`, '#FFD700', 'Conectando a GitHub');
+        await pushToGitHub('data/wms_totes_completo.json', data, token,
+          `wms: ${data.length} totes actualizados ${now}`);
+        msg(`✓ ${data.length} totes → GitHub`, '#3fb950', 'Actions regenerando en ~1 min');
 
-      msg(`✓ ${data.length} totes → GitHub`, '#3fb950', 'Actions regenerando dashboard en ~1 min');
-      console.log('[CLRM03] Push exitoso:', data.length, 'totes');
+      } else if (url.includes('/reports/address')) {
+        msg('Extrayendo ubicaciones...', '#FFD700');
+        const data = await fetchAddress();
+        msg(`Subiendo ${data.length} ubicaciones...`, '#FFD700', 'Conectando a GitHub');
+        await pushToGitHub('data/wms_address_CLRM03.json', data, token,
+          `wms: ${data.length} ubicaciones actualizadas ${now}`);
+        msg(`✓ ${data.length} ubicaciones → GitHub`, '#3fb950', 'Actions regenerando en ~1 min');
+
+      } else {
+        msg('Página no reconocida', '#8b949e');
+        return;
+      }
 
       setTimeout(() => { badge.style.opacity = '0.25'; }, 15000);
 
     } catch (e) {
       if (e.message.includes('Bad credentials') || e.message.includes('401')) {
-        GM_setValue('gh_token', ''); // limpiar token inválido
+        GM_setValue('gh_token_v2', '');
         msg('⚠ Token inválido', '#FF7A00', 'Recarga para ingresar nuevo token');
       } else {
         msg('✗ ' + e.message, '#f85149');

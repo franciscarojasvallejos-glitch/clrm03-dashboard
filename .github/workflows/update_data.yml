@@ -6,7 +6,8 @@ on:
   workflow_dispatch:          # permite correrlo manualmente desde GitHub
   push:
     paths:
-      - 'data/wms_totes_completo.json'  # Tampermonkey pushea → Actions regenera al instante
+      - 'data/wms_totes_completo.json'   # Tampermonkey totes → regenera al instante
+          - 'data/wms_address_CLRM03.json'   # Tampermonkey address → regenera ocupacion
 
 permissions:
   contents: write
@@ -42,7 +43,12 @@ jobs:
         run: python generar_putaway_json.py
 
       - name: Generar ocupacion JSON
-        run: python fetch_ocupacion.py
+        run: |
+          if [ -f data/wms_address_CLRM03.json ]; then
+            python procesar_wms_address.py
+          else
+            python fetch_ocupacion.py
+          fi
 
       - name: Generar MZ heatmap JSON
         run: python generar_mz_json.py
