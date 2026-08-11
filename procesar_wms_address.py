@@ -43,18 +43,17 @@ def process():
             sid = slot['id']
             if sid in wms_idx:
                 w = wms_idx[sid]
-                slot['qty']         = w.get('stock', 0)
-                slot['avail']       = w.get('available', 0)
-                slot['skus']        = w.get('skus', [])
-                slot['sku_details'] = w.get('sku_details', {})
+                # Siempre actualizar stock desde WMS (dato en tiempo real)
+                slot['qty']   = w.get('stock', 0)
+                slot['avail'] = w.get('available', 0)
+                # Solo actualizar SKUs si WMS los trae; si no, conservar los de BQ
+                wms_skus = w.get('skus', [])
+                if wms_skus:
+                    slot['skus']        = wms_skus
+                    slot['sku_details'] = w.get('sku_details', {})
                 slot_updated += 1
             else:
-                # Ubicación no aparece en WMS → vacía
-                slot['qty']         = 0
-                slot['avail']       = 0
-                slot['skus']        = []
-                slot['sku_details'] = {}
-                slot_cleared += 1
+                slot_cleared += 1  # sin cambios — BQ mantiene sus datos
 
         # Recalcular totales del bay
         bay['n_skus'] = sum(len(s['skus']) for s in bay['slots'])
