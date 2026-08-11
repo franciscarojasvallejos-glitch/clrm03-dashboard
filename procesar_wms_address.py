@@ -51,6 +51,7 @@ def process():
                 if wms_skus:
                     slot['skus']        = wms_skus
                     slot['sku_details'] = w.get('sku_details', {})
+                    # sku_qtys viene de BQ — se preserva si WMS no lo trae
                 slot_updated += 1
             else:
                 slot_cleared += 1  # sin cambios — BQ mantiene sus datos

@@ -93,10 +93,17 @@ def fetch():
                 'qty': 0, 'avail': 0, 'res': 0, 'skus': []
             }
         s = slots[aid]
-        s['qty']   += int(r.qty or 0)
-        s['avail'] += int(r.avail or 0)
-        s['res']   += int(r.res or 0)
-        s['skus'].append(r.INVENTORY_ID)
+        inv = r.INVENTORY_ID
+        qty_v   = int(r.qty   or 0)
+        avail_v = int(r.avail or 0)
+        res_v   = int(r.res   or 0)
+        s['qty']   += qty_v
+        s['avail'] += avail_v
+        s['res']   += res_v
+        s['skus'].append(inv)
+        if 'sku_qtys' not in s:
+            s['sku_qtys'] = {}
+        s['sku_qtys'][inv] = {'qty': qty_v, 'avail': avail_v, 'res': res_v}
 
     bays = {}
     for s in slots.values():
@@ -115,7 +122,8 @@ def fetch():
         b['avail']   += s['avail']
         b['slots'].append({'id': s['id'], 'level': s['level'], 'pos': s['pos'],
                            'tipo': s.get('tipo',''), 'clase': s.get('clase',''),
-                           'skus': s['skus'], 'qty': s['qty'], 'avail': s['avail']})
+                           'skus': s['skus'], 'sku_qtys': s.get('sku_qtys', {}),
+                           'qty': s['qty'], 'avail': s['avail']})
 
     bays_list = sorted(bays.values(), key=lambda b: (b['aisle'], b['bay']))
     total_slots     = len(slots)
