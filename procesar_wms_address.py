@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 procesar_wms_address.py
-Convierte data/wms_address_CLRM03.json (scraped por Tampermonkey)
-→ data/ocupacion_CLRM03.json (mismo formato que fetch_ocupacion.py)
+Hace merge de data/wms_address_CLRM03.json (WMS, Tampermonkey)
+sobre data/ocupacion_CLRM03.json existente (BQ, layout completo).
+Actualiza stock, SKUs e imágenes sin borrar el layout de BQ.
 """
 import json, os, sys
 from datetime import datetime
@@ -12,116 +13,89 @@ TZ        = ZoneInfo('America/Santiago')
 WAREHOUSE = 'CLRM03'
 BASE      = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR  = os.path.join(BASE, 'data')
-IN_FILE   = os.path.join(DATA_DIR, 'wms_address_CLRM03.json')
-OUT_FILE  = os.path.join(DATA_DIR, 'ocupacion_CLRM03.json')
-
-CAP_BY_ZONE = {'RK': 6, 'BL': 1}
-
-def parse_addr(addr):
-    if not addr: return None
-    p = addr.split('-')
-    if len(p) < 6: return None
-    try:
-        return (p[0], int(p[2]), int(p[3]), int(p[4]), int(p[5]))
-    except ValueError:
-        return None
+WMS_FILE  = os.path.join(DATA_DIR, 'wms_address_CLRM03.json')
+OCC_FILE  = os.path.join(DATA_DIR, 'ocupacion_CLRM03.json')
 
 def process():
-    if not os.path.exists(IN_FILE):
-        print(f"  ERROR: no existe {IN_FILE}", flush=True)
+    if not os.path.exists(WMS_FILE):
+        print(f"  ERROR: no existe {WMS_FILE}", flush=True)
+        sys.exit(1)
+    if not os.path.exists(OCC_FILE):
+        print(f"  ERROR: no existe {OCC_FILE} (ejecutar fetch_ocupacion.py primero)", flush=True)
         sys.exit(1)
 
-    with open(IN_FILE, encoding='utf-8') as f:
-        raw = json.load(f)
+    with open(WMS_FILE, encoding='utf-8') as f:
+        wms_raw = json.load(f)
+    with open(OCC_FILE, encoding='utf-8') as f:
+        occ = json.load(f)
 
-    print(f"  {len(raw):,} ubicaciones cargadas desde WMS", flush=True)
+    print(f"  WMS: {len(wms_raw):,} ubicaciones con stock", flush=True)
+    print(f"  BQ layout: {occ['stats']['total_slots']:,} slots, {occ['stats']['total_bays']:,} bays", flush=True)
 
-    slots = {}
-    for r in raw:
-        aid = r.get('address_id', '')
-        if not aid:
-            continue
-        parsed = parse_addr(aid)
-        if not parsed:
-            continue
-        zone = parsed[0]
-        slots[aid] = {
-            'id':    aid,
-            'zone':  zone,
-            'aisle': parsed[1], 'bay': parsed[2],
-            'level': parsed[3], 'pos': parsed[4],
-            'cap':   CAP_BY_ZONE.get(zone, 6),
-            'qty':   r.get('stock', 0),
-            'avail': r.get('available', 0),
-            'res':   r.get('reserved', 0),
-            'skus':  r.get('skus', []),
-            'sku_details': r.get('sku_details', {}),
-            'tipo':  '',
-            'clase': '',
-        }
+    # Índice WMS por address_id
+    wms_idx = {r['address_id']: r for r in wms_raw if r.get('address_id')}
 
-    bays = {}
-    for s in slots.values():
-        key = (s['zone'], s['aisle'], s['bay'])
-        if key not in bays:
-            bays[key] = {
-                'zone': s['zone'], 'aisle': s['aisle'], 'bay': s['bay'],
-                'n_slots': 0, 'n_cap': 0, 'n_skus': 0, 'qty': 0, 'avail': 0,
-                'slots': []
-            }
-        b = bays[key]
-        b['n_slots'] += 1
-        b['n_cap']   += s['cap']
-        b['n_skus']  += len(s['skus'])
-        b['qty']     += s['qty']
-        b['avail']   += s['avail']
-        b['slots'].append({
-            'id': s['id'], 'level': s['level'], 'pos': s['pos'],
-            'tipo': s['tipo'], 'clase': s['clase'],
-            'skus': s['skus'], 'sku_details': s['sku_details'],
-            'qty': s['qty'], 'avail': s['avail'],
-        })
+    # Reconstruir índice de slots desde bays
+    slot_updated = 0
+    slot_cleared = 0
+    for bay in occ['bays']:
+        for slot in bay['slots']:
+            sid = slot['id']
+            if sid in wms_idx:
+                w = wms_idx[sid]
+                slot['qty']         = w.get('stock', 0)
+                slot['avail']       = w.get('available', 0)
+                slot['skus']        = w.get('skus', [])
+                slot['sku_details'] = w.get('sku_details', {})
+                slot_updated += 1
+            else:
+                # Ubicación no aparece en WMS → vacía
+                slot['qty']         = 0
+                slot['avail']       = 0
+                slot['skus']        = []
+                slot['sku_details'] = {}
+                slot_cleared += 1
 
-    bays_list   = sorted(bays.values(), key=lambda b: (b['aisle'], b['bay']))
-    total_slots = len(slots)
-    all_skus    = [len(s['skus']) for s in slots.values()]
-    locs_occ    = sum(1 for s in slots.values() if len(s['skus']) > 0)
-    locs_multi  = sum(1 for s in slots.values() if len(s['skus']) > 1)
+        # Recalcular totales del bay
+        bay['n_skus'] = sum(len(s['skus']) for s in bay['slots'])
+        bay['qty']    = sum(s['qty']   for s in bay['slots'])
+        bay['avail']  = sum(s['avail'] for s in bay['slots'])
 
-    stats = {
-        'total_slots':     total_slots,
-        'total_bays':      len(bays),
-        'total_sku_slots': sum(all_skus),
+    print(f"  Slots actualizados: {slot_updated:,} con stock, {slot_cleared:,} vaciados", flush=True)
+
+    # Recalcular stats globales
+    all_slots  = [s for bay in occ['bays'] for s in bay['slots']]
+    total      = len(all_slots)
+    locs_occ   = sum(1 for s in all_slots if len(s.get('skus', [])) > 0)
+    locs_multi = sum(1 for s in all_slots if len(s.get('skus', [])) > 1)
+    all_skus   = [len(s.get('skus', [])) for s in all_slots]
+
+    occ['stats'].update({
         'locs_occ':        locs_occ,
         'locs_multi':      locs_multi,
-        'pct_occ':   round(locs_occ   / total_slots * 100, 1) if total_slots else 0,
-        'pct_multi': round(locs_multi / locs_occ   * 100, 1) if locs_occ   else 0,
+        'pct_occ':   round(locs_occ   / total * 100, 1) if total else 0,
+        'pct_multi': round(locs_multi / locs_occ * 100, 1) if locs_occ else 0,
         'avg_skus':  round(sum(all_skus) / len(all_skus), 2) if all_skus else 0,
         'max_skus':  max(all_skus) if all_skus else 0,
-        'locs_full': sum(1 for s in slots.values() if len(s['skus']) >= s['cap']),
-        'locs_1':    sum(1 for s in slots.values() if len(s['skus']) == 1),
-        'locs_2':    sum(1 for s in slots.values() if len(s['skus']) == 2),
-        'locs_3':    sum(1 for s in slots.values() if len(s['skus']) == 3),
-        'locs_4plus':sum(1 for s in slots.values() if len(s['skus']) >= 4),
-        'source':    'wms',
-    }
+        'total_sku_slots': sum(all_skus),
+        'locs_full': sum(1 for s in all_slots if len(s.get('skus', [])) >= s.get('cap', 6)),
+        'locs_1':    sum(1 for s in all_slots if len(s.get('skus', [])) == 1),
+        'locs_2':    sum(1 for s in all_slots if len(s.get('skus', [])) == 2),
+        'locs_3':    sum(1 for s in all_slots if len(s.get('skus', [])) == 3),
+        'locs_4plus':sum(1 for s in all_slots if len(s.get('skus', [])) >= 4),
+        'source':    'wms_overlay',
+    })
 
     now = datetime.now(tz=TZ)
-    out = {
-        'date':    now.strftime('%Y-%m-%d'),
-        'updated': now.strftime('%H:%M:%S'),
-        'wh':      WAREHOUSE,
-        'stats':   stats,
-        'bays':    bays_list,
-    }
+    occ['updated'] = now.strftime('%H:%M:%S')
+    occ['date']    = now.strftime('%Y-%m-%d')
 
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(OUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(out, f, separators=(',', ':'), ensure_ascii=False)
+    with open(OCC_FILE, 'w', encoding='utf-8') as f:
+        json.dump(occ, f, separators=(',', ':'), ensure_ascii=False)
 
-    kb = os.path.getsize(OUT_FILE) / 1024
-    print(f"  Guardado: {OUT_FILE}  ({stats['total_slots']:,} slots · {stats['total_bays']:,} bays · {kb:.0f} KB)")
-    print(f"  Ocupación: {stats['locs_occ']:,}/{stats['total_slots']:,} ({stats['pct_occ']}%)")
+    kb = os.path.getsize(OCC_FILE) / 1024
+    s  = occ['stats']
+    print(f"  Guardado: {OCC_FILE} ({s['total_slots']:,} slots · {s['locs_occ']:,} ocupados · {s['pct_occ']}% · {kb:.0f} KB)")
 
 if __name__ == '__main__':
     process()
