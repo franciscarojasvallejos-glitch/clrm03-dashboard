@@ -1065,6 +1065,7 @@ function abrirSlotModal(slotId, bayKey){
           <div style="height:100%;width:${pctBar}%;background:${col};border-radius:3px"></div>
         </div>
         <div style="font-size:9px;color:#666666">${slot.qty||0} unidades · ${slot.avail||0} disponibles</div>
+        ${(slot.dim_w||slot.dim_h||slot.dim_l)?`<div style="font-size:8px;color:#888888;margin-top:3px">📐 ${[slot.dim_l?slot.dim_l+'cm L':null,slot.dim_w?slot.dim_w+'cm W':null,slot.dim_h?slot.dim_h+'cm H':null,slot.dim_kg?slot.dim_kg+'kg':null].filter(Boolean).join(' · ')}</div>`:''}
       </div>
     </div>
     <div style="font-size:10px;font-weight:700;color:#999999;margin-bottom:6px">PRODUCTOS EN ESTA UBICACIÓN</div>
