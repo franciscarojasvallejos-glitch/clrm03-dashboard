@@ -6,8 +6,8 @@ on:
   workflow_dispatch:          # permite correrlo manualmente desde GitHub
   push:
     paths:
-      - 'data/wms_totes_completo.json'   # Tampermonkey totes → regenera al instante
-          - 'data/wms_address_CLRM03.json'   # Tampermonkey address → regenera ocupacion
+      - 'data/wms_totes_completo.json'    # Tampermonkey totes → regenera al instante
+      - 'data/wms_address_CLRM03.json'    # Tampermonkey address → regenera ocupacion
 
 permissions:
   contents: write
