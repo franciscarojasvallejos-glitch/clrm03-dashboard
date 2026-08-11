@@ -148,22 +148,44 @@
     const startRE = /"address_id":"((?:RK|BL)[^"]+)"/g;
     let m;
     while ((m = startRE.exec(html)) !== null) {
-      const chunk  = html.substring(m.index, m.index + 2200);
+      const chunk  = html.substring(m.index, m.index + 6000);
       const stock  = (chunk.match(/"stock_quantity":(\d+)/)        || [])[1];
       const avail  = (chunk.match(/"own_available_quantity":(\d+)/) || [])[1];
       const res    = (chunk.match(/"reserved_quantity":(\d+)/)      || [])[1];
-      const inv_m  = chunk.match(/"inventory_id_list":\[([^\]]*)\]/);
-      const skus   = inv_m ? inv_m[1].replace(/"/g, '').split(',').filter(Boolean) : [];
       const w_m    = chunk.match(/"width":\{"value":([\d.]+)/);
       const h_m    = chunk.match(/"height":\{"value":([\d.]+)/);
       const l_m    = chunk.match(/"length":\{"value":([\d.]+)/);
       const kg_m   = chunk.match(/"weight":\{"value":([\d.]+)/);
+
+      // Recopilar todos los inventory_id dentro del chunk
+      const skus = [];
+      const skuDetails = {};
+      const invRE = /"inventory_id":"([^"]+)"/g;
+      let im;
+      while ((im = invRE.exec(chunk)) !== null) {
+        const inv = im[1];
+        if (!skus.includes(inv)) {
+          skus.push(inv);
+          // Buscar title, photo y seller cerca del inventory_id
+          const sub = chunk.substring(im.index, im.index + 2000);
+          const title  = (sub.match(/"title":"([^"]+)"/)  || [])[1] || '';
+          const photo  = (sub.match(/"photo":"([^"]+)"/)  || [])[1] || '';
+          const seller = (sub.match(/"seller":"([^"]+)"/) || [])[1] || '';
+          skuDetails[inv] = {
+            title,
+            photo: photo.replace(/\\u002F/g, '/'),
+            seller,
+          };
+        }
+      }
+
       out.push({
         address_id: m[1],
         stock:    stock  ? +stock  : 0,
         available: avail ? +avail  : 0,
         reserved:  res   ? +res    : 0,
         skus,
+        sku_details: skuDetails,
         dim_w:  w_m  ? +w_m[1]  : null,
         dim_h:  h_m  ? +h_m[1]  : null,
         dim_l:  l_m  ? +l_m[1]  : null,

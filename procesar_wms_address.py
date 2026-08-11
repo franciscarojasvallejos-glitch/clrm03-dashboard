@@ -55,6 +55,7 @@ def process():
             'avail': r.get('available', 0),
             'res':   r.get('reserved', 0),
             'skus':  r.get('skus', []),
+            'sku_details': r.get('sku_details', {}),
             'tipo':  '',
             'clase': '',
         }
@@ -77,7 +78,8 @@ def process():
         b['slots'].append({
             'id': s['id'], 'level': s['level'], 'pos': s['pos'],
             'tipo': s['tipo'], 'clase': s['clase'],
-            'skus': s['skus'], 'qty': s['qty'], 'avail': s['avail'],
+            'skus': s['skus'], 'sku_details': s['sku_details'],
+            'qty': s['qty'], 'avail': s['avail'],
         })
 
     bays_list   = sorted(bays.values(), key=lambda b: (b['aisle'], b['bay']))
