@@ -2579,13 +2579,30 @@ function _productosMovable(list, pw){
     const more=list.length>15?`<div style="font-size:8px;color:#999999;padding:4px 0;text-align:center">+${list.length-15} SKUs más</div>`:'';
     return rows+more;
   }
-  // Sin CHK_DATA — resumen de PW_DATA
+  // Sin CHK_DATA — usar lista de SKUs de PW_DATA si existe
   if(!pw||!pw.sku_count) return '<div style="font-size:9px;color:#999999;padding:8px 0">Sin detalle de productos disponible (pendiente de checkin).</div>';
-  return `<div style="font-size:9px;color:#666666;padding:6px 0">
+  const skuList = pw.skus||[];
+  const skuCards = skuList.slice(0,20).map(sk=>{
+    const cat=CATALOG[sk]||{};
+    const title=cat.title||'';
+    const short=title.length>32?title.slice(0,32)+'…':title;
+    const img=cat.img?`<img src="${cat.img}" style="width:24px;height:24px;object-fit:contain;border-radius:3px;margin-right:5px" onerror="this.style.display='none'">`:'<div style="width:24px;height:24px;background:#F5F5F5;border-radius:3px;margin-right:5px;flex-shrink:0"></div>';
+    return `<div style="display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid #F5F5F5">
+      ${img}
+      <div style="flex:1;min-width:0">
+        <div style="font-family:monospace;font-size:9px;color:#3483FA">${sk}</div>
+        <div style="font-size:9px;color:#333333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${title}">${short||'—'}</div>
+        ${cat.brand?`<div style="font-size:8px;color:#999999">${cat.brand}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  const more=skuList.length>20?`<div style="font-size:8px;color:#999999;padding:4px 0;text-align:center">+${skuList.length-20} SKUs más</div>`:'';
+  const header=`<div style="font-size:9px;color:#666666;padding:4px 0 6px">
     <span style="color:#999999">SKUs:</span> <b style="color:#F5A623">${pw.sku_count}</b>&nbsp;&nbsp;
     <span style="color:#999999">Unidades:</span> <b style="color:#F5A623">${pw.qty_checkin||'—'}</b>&nbsp;&nbsp;
     <span style="color:#999999">Seller:</span> <b style="color:#333333">${pw.seller||'—'}</b>
   </div>`;
+  return header + (skuCards||'') + more;
 }
 
 function chkRenderMovable(){

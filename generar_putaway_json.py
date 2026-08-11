@@ -89,7 +89,8 @@ def generate():
           ANY_VALUE(op.CUS_NICKNAME)             AS seller,
           COUNT(DISTINCT op.INVENTORY_ID)        AS sku_count,
           SUM(COALESCE(op.CHKU_UNITS_OK,0)+COALESCE(op.CHKU_UNITS_DAMAGED,0)) AS qty_checkin,
-          MIN(op.CHK_CREATED_DATETIME)           AS oldest_chk
+          MIN(op.CHK_CREATED_DATETIME)           AS oldest_chk,
+          ARRAY_AGG(DISTINCT op.INVENTORY_ID LIMIT 100) AS sku_list
         FROM `{PROJECT}.WHOWNER.BT_FBM_INBOUND_OPERATION` op
         WHERE op.WAREHOUSE_ID = '{WH}'
           AND op.SIT_SITE_ID  = 'MLC'
@@ -162,6 +163,7 @@ def generate():
             'seller':         inb.seller if inb else '',
             'sku_count':      int(inb.sku_count or 0) if inb else 0,
             'qty_checkin':    int(inb.qty_checkin or 0) if inb else 0,
+            'skus':           list(inb.sku_list or []) if inb else [],
             'appointment':    fmt(inb.appointment_dt) if inb else None,
             'arrival':        fmt(inb.arrival_dt) if inb else None,
             'pw_created':     fmt(r.pw_created_dt),
