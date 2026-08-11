@@ -250,11 +250,29 @@
 
       } else if (url.includes('/reports/address')) {
         msg('Extrayendo ubicaciones...', '#FFD700');
-        const data = await fetchAddress();
-        msg(`Subiendo ${data.length} ubicaciones...`, '#FFD700', 'Conectando a GitHub');
+        const newData = await fetchAddress();
+        msg(`Mergeando ${newData.length} nuevas...`, '#FFD700', 'Descargando existentes de GitHub');
+
+        // Descargar el JSON existente para hacer merge
+        let existing = [];
+        try {
+          const filePath = 'data/wms_address_CLRM03.json';
+          const current = await ghRequest('GET',
+            `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`,
+            null, token);
+          existing = JSON.parse(decodeURIComponent(escape(atob(current.content.replace(/\n/g,'')))));
+        } catch(e) { existing = []; }
+
+        // Merge por address_id: nuevos sobreescriben existentes
+        const merged = {};
+        for (const r of existing) if (r.address_id) merged[r.address_id] = r;
+        for (const r of newData) if (r.address_id) merged[r.address_id] = r;
+        const data = Object.values(merged);
+
+        msg(`Subiendo ${data.length} ubicaciones...`, '#FFD700', `(${newData.length} nuevas + existentes)`);
         await pushToGitHub('data/wms_address_CLRM03.json', data, token,
-          `wms: ${data.length} ubicaciones actualizadas ${now}`);
-        msg(`✓ ${data.length} ubicaciones → GitHub`, '#3fb950', 'Actions regenerando en ~1 min');
+          `wms: ${data.length} ubicaciones (${newData.length} actualizadas) ${now}`);
+        msg(`✓ ${data.length} ubicaciones → GitHub`, '#3fb950', `${newData.length} actualizadas`);
 
       } else {
         msg('Página no reconocida', '#8b949e');
