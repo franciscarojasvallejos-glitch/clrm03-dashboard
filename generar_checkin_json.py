@@ -171,6 +171,7 @@ def generate(dias=1):
     # Los movables viejos (>1 día) que siguen WAITING en WMS no aparecen en la
     # consulta principal. Los traemos explícitamente por IS id.
     is_ya = {x['is_id'] for x in items if x['is_id']}
+    seen  = {(x['inbound_id'], x['sku'], x['is_id']) for x in items}
     q_pending_is = f"""
     SELECT DISTINCT SOURCE_PROCESS_ID AS is_id, ADDRESS_FROM AS movable
     FROM `{PROJECT}.WHOWNER.BT_FBM_PUTAWAY`
@@ -220,6 +221,10 @@ def generate(dias=1):
             rows2 = list(client.query(q2).result())
             print(f"  Lote IS pendientes {i//lote_sz+1}: {len(rows2)} filas", flush=True)
             for r in rows2:
+                key = (str(r.INBOUND_ID or ''), r.INVENTORY_ID or '', str(int(r.is_id)) if r.is_id else '')
+                if key in seen:
+                    continue
+                seen.add(key)
                 chk_ts    = r.chk_ts
                 pw_ini_ts = r.pw_inicio_ts
                 pw_fin_ts = r.pw_fin_ts
@@ -241,7 +246,10 @@ def generate(dias=1):
                 pw_status  = (r.pw_status or '')
                 en_putaway = pw_status in ('WAITING_STORAGE_TO', 'WAITING_FINISH')
                 sla_mins   = int((now_dt - pw_ini).total_seconds() / 60) if pw_ini else mins_since_chk
-                sla = 'over' if (sla_mins and sla_mins >= SLA_WARN) else ('pw_active' if en_putaway else 'ok')
+                if pw_status == 'FINISHED':
+                    sla = 'done'   # ya terminado: no cuenta como sobre SLA
+                else:
+                    sla = 'over' if (sla_mins and sla_mins >= SLA_WARN) else ('pw_active' if en_putaway else 'ok')
                 mins_restantes = (SLA_WARN - mins_since_chk) if mins_since_chk is not None else None
 
                 def fmt_ts(dt):

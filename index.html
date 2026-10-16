@@ -249,6 +249,7 @@ h1{font-size:13px;font-weight:700;color:#333333;white-space:nowrap}
     <div title="Picking BL disponible en WMS y sin stock"><div class="kv" id="k-disp-pick" style="color:#4da6ff">—</div><div class="kl">Pick. Libre</div></div>
   </div>
 </div>
+<div id="fresh-banner" style="display:none;padding:4px 12px;font-size:11px;font-weight:600;text-align:center;flex-shrink:0"></div>
 <div id="dash-tabs">
   <button class="dash-tab active" onclick="switchTab('mapa')">🗺️ Mapa de Ocupación</button>
   <button class="dash-tab" onclick="switchTab('inv')">📦 Inventario SKU</button>
@@ -586,9 +587,27 @@ async function loadData(){
 }
 
 // ── KPIs ──────────────────────────────────────────────────────────────────
+// Antigüedad de los datos (hora de Chile). Ámbar >8h, rojo >24h.
+function updateFreshness(){
+  const el=document.getElementById('fresh-banner');
+  if(!DAY||!DAY.date||!DAY.updated){el.style.display='none';return;}
+  const toMs=s=>Date.parse(s.replace(' ','T')+'Z');
+  const nowCl=new Date().toLocaleString('sv-SE',{timeZone:'America/Santiago'});
+  const hrs=(toMs(nowCl)-toMs(DAY.date+' '+DAY.updated))/3600000;
+  if(!(hrs>8)){el.style.display='none';return;}
+  const txt=hrs>=48?Math.floor(hrs/24)+' días':Math.floor(hrs)+' h';
+  const bad=hrs>24;
+  el.style.display='block';
+  el.style.background=bad?'#F23D4F':'#FFB020';
+  el.style.color=bad?'#FFFFFF':'#333333';
+  el.textContent=(bad?'⚠ DATOS DESACTUALIZADOS: ':'Datos con ')+(bad?'último dato hace '+txt:txt)+' ('+DAY.date+' '+DAY.updated+'). El refresh solo recarga el archivo; la actualización la hace el proceso de datos.';
+}
+setInterval(updateFreshness,60000);
+
 function renderKPIs(){
   const s=DAY.stats||{};
-  document.getElementById('hupd').textContent      =DAY.updated||'—';
+  document.getElementById('hupd').textContent      =(DAY.date?DAY.date+' ':'')+(DAY.updated||'—');
+  updateFreshness();
   document.getElementById('k-slots').textContent   =(s.total_slots||0).toLocaleString();
   document.getElementById('k-bays').textContent    =(s.locs_occ||0).toLocaleString();
   document.getElementById('k-pct').textContent     =(s.pct_occ||0)+'%';

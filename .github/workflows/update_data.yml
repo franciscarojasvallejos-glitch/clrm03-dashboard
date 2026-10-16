@@ -11,10 +11,15 @@ on:
 
 permissions:
   contents: write
+  issues: write
+
+concurrency:
+  group: update-data-clrm03
+  cancel-in-progress: false
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 4        # si supera 4 min, algo falló → no bloquea el siguiente ciclo
 
     steps:
@@ -35,6 +40,24 @@ jobs:
         run: |
           echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/sa_key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json" >> $GITHUB_ENV
+
+      - name: Verificar credenciales BigQuery
+        run: |
+          python - <<'EOF'
+          import json, sys
+          from google.cloud import bigquery
+          try:
+              kind = json.load(open('/tmp/sa_key.json')).get('type')
+          except Exception as e:
+              sys.exit(f"::error::GCP_SERVICE_ACCOUNT_KEY no es un JSON valido: {e}")
+          if kind != 'service_account':
+              print(f"::warning::El secret es de tipo '{kind}', no 'service_account'. Credenciales de usuario pueden ser restringidas o vencer.")
+          try:
+              bigquery.Client(project='meli-bi-data').query('SELECT 1').result()
+          except Exception as e:
+              sys.exit(f"::error::Autenticacion BigQuery fallo ({type(e).__name__}): {str(e)[:300]}")
+          print("Credenciales BigQuery OK")
+          EOF
 
       - name: Generar checkin/putaway inbound JSON
         run: python generar_checkin_json.py --dias 3
@@ -64,3 +87,24 @@ jobs:
           git diff --staged --quiet || git commit -m "data: auto $(date -u +'%Y-%m-%d %H:%M' )"
           git pull --rebase -X theirs origin main
           git push
+
+      - name: Cerrar alerta si todo volvio a funcionar
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --label data-stale --state open --json number -q '.[].number'); do
+            gh issue close "$n" --comment "Actualizacion restablecida (run ${{ github.run_id }})."
+          done
+
+      - name: Alertar si falla la actualizacion
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create data-stale --color B60205 --description "Datos del dashboard sin actualizar" 2>/dev/null || true
+          if [ -z "$(gh issue list --label data-stale --state open --json number -q '.[0].number')" ]; then
+            gh issue create --label data-stale \
+              --title "Dashboard CLRM03: actualizacion automatica fallando" \
+              --body "El workflow fallo: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Causa mas probable: credenciales GCP (secret GCP_SERVICE_ACCOUNT_KEY). Los datos del dashboard no se estan actualizando."
+          fi
