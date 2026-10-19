@@ -1881,6 +1881,9 @@ let PW_DATA=[];    // movables pendientes de putaway (BT_FBM_PUTAWAY)
 let PW_VIEW='movable'; // 'movable' | 'is'
 let PW_SLA_FILTER='all'; // 'all' | 'over' | 'warn' | 'ok' | 'nt'
 let PW_UPDATED='';
+let PW_ALL=[];      // todos los movables pendientes (activos + sin actualizar)
+let PW_STALE=[];    // posibles datos desactualizados (ver generar_putaway_json.py)
+let PW_STALE_DAYS=7;
 let PW_SORT='asc'; // 'asc' = más vencidos primero, 'desc' = más tiempo primero
 
 async function loadCheckin(){
@@ -1908,7 +1911,12 @@ async function loadCheckin(){
     if(r2.ok){ const d=await r2.json(); INB_DATA=d.shipments||[]; }
     if(r3.ok){
       const d=await r3.json();
-      PW_DATA=d.movables||[];
+      // Los movables marcados "stale" (sin actualizar hace >N dias y sin stock) quedan fuera de los
+      // contadores y del SLA; siguen disponibles en el filtro "Sin actualizar" para poder auditarlos.
+      PW_ALL=d.movables||[];
+      PW_STALE=PW_ALL.filter(g=>g.stale);
+      PW_DATA=PW_ALL.filter(g=>!g.stale);
+      PW_STALE_DAYS=d.stale_days||7;
       PW_UPDATED=d.updated||'';
       // Propagar is_nt a CHK_DATA por IS: si un movable NT pertenece al mismo IS, marcar items como NT
       const ntIsSet=new Set(PW_DATA.filter(g=>g.is_nt).map(g=>String(g.is_id||'')).filter(Boolean));
@@ -1959,8 +1967,8 @@ function renderPutawaySLA(){
   const body=document.getElementById('chk-det-body');
   if(CHK_SEL) return;
 
-  // Usar PW_DATA (BT_FBM_PUTAWAY) como fuente de movables pendientes
-  const src = PW_DATA.length ? PW_DATA : [];
+  // Usar PW_DATA (BT_FBM_PUTAWAY, solo activos) como fuente; el filtro "stale" muestra los sin actualizar
+  const src = PW_SLA_FILTER==='stale' ? PW_STALE : (PW_DATA.length ? PW_DATA : []);
 
   // Recalcular SLA en vivo usando pw_created + 48h
   function liveSla(g){
@@ -2015,7 +2023,7 @@ function renderPutawaySLA(){
 
   // Contar por banda
   const bandCounts={};
-  slaBands.forEach(b=>{ bandCounts[b.key]=src.filter(b.fn).length; });
+  slaBands.forEach(b=>{ bandCounts[b.key]=PW_DATA.filter(b.fn).length; });
 
   hdr.innerHTML=`
   <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
@@ -2032,9 +2040,11 @@ function renderPutawaySLA(){
   <div style="margin-top:6px">
     <div style="font-size:9px;color:#999999;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Filtrar por SLA</div>
     <div style="display:flex;gap:4px;flex-wrap:wrap">
-      ${slaBtn('all',`Todos (${src.length})`,'#666666')}
+      ${slaBtn('all',`Todos (${PW_DATA.length})`,'#666666')}
       ${slaBands.map(b=>slaBtn(b.key,`${b.label} (${bandCounts[b.key]})`,b.col)).join('')}
+      ${PW_STALE.length?slaBtn('stale',`🕓 Sin actualizar (${PW_STALE.length})`,'#888888'):''}
     </div>
+    ${PW_SLA_FILTER==='stale'?`<div style="font-size:9px;color:#8a6d00;background:#FFF8E1;border:1px solid #F5E1A4;border-radius:4px;padding:4px 6px;margin-top:5px">Posibles datos desactualizados: putaway pendiente sin actualizar hace más de ${PW_STALE_DAYS} días y sin stock en la ubicación. No cuentan como vencidos. Conviene validarlos en WMS y pedir su cierre al equipo dueño de la tabla.</div>`:''}
   </div>
 
   <div style="font-size:8px;color:#999999;margin-top:5px">
@@ -2162,7 +2172,7 @@ function pwFilterMovable(mv){
   PW_MOVABLE_FILTER=mv;
 
   // Obtener is_id desde PW_DATA (fuente confiable)
-  const pwRec=PW_DATA.find(g=>g.movable===mv)||{};
+  const pwRec=PW_ALL.find(g=>g.movable===mv)||{};
   const isId=pwRec.is_id||'';
   const isNT=mv.includes('-NT-');
 
@@ -2193,7 +2203,7 @@ function pwClearFilter(){
 
 // ── Popup de movable en tab Putaway ──────────────────────────────────────────
 function pwShowMovablePopup(mv){
-  const pw  = PW_DATA.find(g=>g.movable===mv)||{};
+  const pw  = PW_ALL.find(g=>g.movable===mv)||{};
   const isId= pw.is_id||'';
   const isNT= mv.includes('-NT-');
 
@@ -2634,7 +2644,7 @@ function chkRenderMovable(){
     list=CHK_DATA.filter(o=>o.sla!=='done'&&String(o.is_id||o.inbound_id||'')===String(isId));
   }
   const tbody=document.getElementById('chk-tbody');
-  const pw=PW_DATA.find(g=>g.movable===mv)||{};
+  const pw=PW_ALL.find(g=>g.movable===mv)||{};
   const isNT=mv&&mv.includes('-NT-');
   const slaCol=pw.sla==='over'?'#F23D4F':pw.sla==='warn'?'#F5A623':'#00A650';
   const slaTxt=pw.sla==='over'?`🔴 Vencido ${fmtHoras(pw.mins_restantes!=null?Math.abs(pw.mins_restantes):null)}`

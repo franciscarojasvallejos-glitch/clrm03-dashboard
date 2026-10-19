@@ -21,6 +21,7 @@ WMS_FILE = os.path.join(DATA_DIR, 'wms_totes_completo.json')
 
 SLA_WARN    = 48 * 60  # SLA pickup: 48h desde primer checkin (oldest_chk)
 SLA_WARN_FTL = 72 * 60  # SLA FTL:    72h desde arrival_dt
+STALE_DAYS  = 7         # pendiente sin actualizar hace mas de N dias y sin stock = posible dato desactualizado
 
 def load_wms_expire():
     """Carga expire_at_date real de WMS por movable (retorna UTC-aware datetimes)."""
@@ -109,6 +110,22 @@ def generate():
             return dt.strftime('%Y-%m-%d %H:%M')
         return str(dt)[:16].replace('T', ' ')
 
+    # Paso 3: stock actual en cada movable. Un putaway pendiente SIN actualizar hace >STALE_DAYS dias
+    # y con la ubicacion vacia es casi seguro un registro que nunca se cerro (no hay nada que guardar).
+    movs = sorted({r.movable for r in rows if r.movable})
+    stock_by_mov = {}
+    for i in range(0, len(movs), 4000):
+        q_stk = f"""
+        SELECT ADDRESS_ID, SUM(FBM_QUANTITY) AS qty
+        FROM `{PROJECT}.WHOWNER.BT_FBM_STOCK_3_ADDRESS`
+        WHERE WAREHOUSE_ID = '{WH}' AND FBM_STOCK_STATUS = 'ok' AND ADDRESS_ID IN UNNEST(@movs)
+        GROUP BY ADDRESS_ID
+        """
+        cfg = bigquery.QueryJobConfig(query_parameters=[bigquery.ArrayQueryParameter('movs', 'STRING', movs[i:i+4000])])
+        for r3 in client.query(q_stk, job_config=cfg).result():
+            stock_by_mov[r3.ADDRESS_ID] = int(r3.qty or 0)
+    print(f"  Stock consultado para {len(movs)} movables ({len(stock_by_mov)} con stock)", flush=True)
+
     items = []
     for r in rows:
         is_nt = '-NT-' in (r.movable or '')
@@ -154,6 +171,13 @@ def generate():
 
         mins_since = mins_en_proceso  # alias para compatibilidad con dashboard
 
+        upd_dt = r.pw_updated_dt
+        upd_naive = (upd_dt.replace(tzinfo=None) if isinstance(upd_dt, datetime)
+                     else datetime.fromisoformat(str(upd_dt)).replace(tzinfo=None)) if upd_dt else None
+        dias_sin_act = (now_naive - upd_naive).days if upd_naive else None
+        stock_hoy = stock_by_mov.get(r.movable or '', 0)
+        stale = bool(dias_sin_act is not None and dias_sin_act > STALE_DAYS and stock_hoy == 0)
+
         items.append({
             'movable':        r.movable or '',
             'is_id':          r.is_id or '',
@@ -169,7 +193,12 @@ def generate():
             'appointment':    fmt(inb.appointment_dt) if inb else None,
             'arrival':        fmt(inb.arrival_dt) if inb else None,
             'pw_created':     fmt(r.pw_created_dt),
-            'expire_at_date': deadline.strftime('%Y-%m-%dT%H:%M:%S-04:00') if deadline else None,
+            # offset real de Santiago (-03:00 en verano, -04:00 en invierno); antes iba fijo en -04:00
+            'expire_at_date': deadline.replace(tzinfo=ZoneInfo('America/Santiago')).isoformat(timespec='seconds') if deadline else None,
+            'ult_actualiz':   fmt(upd_dt),
+            'dias_sin_actualizar': dias_sin_act,
+            'stock_hoy':      stock_hoy,
+            'stale':          stale,
             'mins_en_proceso': mins_en_proceso,
             'mins_since_chk': mins_since,
             'mins_restantes': mins_restantes,
@@ -177,15 +206,19 @@ def generate():
             'wms_exact':      wms_exact,
         })
 
-    nt_movs  = sum(1 for x in items if x['is_nt'])
-    over_sla = sum(1 for x in items if x['sla'] == 'over')
-    print(f"  {len(items)} movables · {nt_movs} NT · {over_sla} sobre SLA", flush=True)
+    stale_n  = sum(1 for x in items if x['stale'])
+    activos  = [x for x in items if not x['stale']]
+    nt_movs  = sum(1 for x in activos if x['is_nt'])
+    over_sla = sum(1 for x in activos if x['sla'] == 'over')   # los desactualizados no cuentan como vencidos
+    print(f"  {len(items)} movables ({stale_n} posibles datos desactualizados) · {nt_movs} NT · {over_sla} sobre SLA", flush=True)
 
     os.makedirs(DATA_DIR, exist_ok=True)
     out = {
         'updated':   now.strftime('%Y-%m-%d %H:%M'),
         'warehouse': WH,
         'total':     len(items),
+        'stale_count': stale_n,
+        'stale_days':  STALE_DAYS,
         'nt_count':  nt_movs,
         'over_sla':  over_sla,
         'movables':  items,
