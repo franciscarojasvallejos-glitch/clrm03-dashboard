@@ -78,8 +78,10 @@ def generate():
     # Paso 2: enriquecer con datos IS desde BT_FBM_INBOUND_OPERATION
     is_ids = list({r.is_id for r in rows if r.is_id})
     is_data = {}
-    if is_ids:
-        ids_str = ','.join(f"'{x}'" for x in is_ids[:500])
+    # Antes solo se enriquecian los primeros 500 IS: el resto quedaba sin seller/SKUs y con el SLA calculado
+    # desde la fecha del putaway en vez del primer check-in. Ahora se procesan todos, en lotes de 500.
+    for i in range(0, len(is_ids), 500):
+        ids_str = ','.join(f"'{x}'" for x in is_ids[i:i+500])
         q2 = f"""
         SELECT
           CAST(op.INBOUND_ID AS STRING)         AS is_id,
@@ -97,7 +99,7 @@ def generate():
           AND CAST(op.INBOUND_ID AS STRING) IN ({ids_str})
         GROUP BY 1
         """
-        print("  Enriqueciendo con datos IS...", flush=True)
+        print(f"  Enriqueciendo con datos IS (lote {i//500 + 1}, {len(is_ids[i:i+500])} IS)...", flush=True)
         for r2 in client.query(q2).result():
             is_data[r2.is_id] = r2
 
