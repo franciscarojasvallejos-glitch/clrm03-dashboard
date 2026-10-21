@@ -150,8 +150,14 @@ def fetch():
         'locs_3': sum(1 for s in slots.values() if len(s['skus'])==3),
         'locs_4plus': sum(1 for s in slots.values() if len(s['skus'])>=4),
     }
+    # Hora real de los datos: ultimo cambio de stock presente en BigQuery. 'updated' es solo cuando corrio
+    # este script; BigQuery llega con ~1-1.5 h de retraso, asi que ambas horas pueden diferir bastante.
+    cut_rows = list(client.query(f"""
+        SELECT FORMAT_DATETIME('%Y-%m-%d %H:%M:%S', MAX(FBM_LAST_UPDATED)) AS cut
+        FROM `{PROJECT}.WHOWNER.BT_FBM_STOCK_3_ADDRESS` WHERE WAREHOUSE_ID = '{WAREHOUSE}'""").result())
+    stock_cut = cut_rows[0].cut if cut_rows else None
     now = datetime.now(tz=TZ)
-    return {'date': now.strftime('%Y-%m-%d'), 'updated': now.strftime('%H:%M:%S'),
+    return {'date': now.strftime('%Y-%m-%d'), 'updated': now.strftime('%H:%M:%S'), 'stock_cut': stock_cut,
             'wh': WAREHOUSE, 'stats': stats, 'bays': bays_list}
 
 def save(data):

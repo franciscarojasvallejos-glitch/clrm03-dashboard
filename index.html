@@ -593,20 +593,22 @@ function updateFreshness(){
   if(!DAY||!DAY.date||!DAY.updated){el.style.display='none';return;}
   const toMs=s=>Date.parse(s.replace(' ','T')+'Z');
   const nowCl=new Date().toLocaleString('sv-SE',{timeZone:'America/Santiago'});
-  const hrs=(toMs(nowCl)-toMs(DAY.date+' '+DAY.updated))/3600000;
-  if(!(hrs>8)){el.style.display='none';return;}
+  // Edad del DATO (corte de stock de BigQuery); si el archivo es antiguo y no lo trae, se usa la hora de generación.
+  const cut=DAY.stock_cut||(DAY.date+' '+DAY.updated);
+  const hrs=(toMs(nowCl)-toMs(cut))/3600000;
+  if(!(hrs>3)){el.style.display='none';return;}
   const txt=hrs>=48?Math.floor(hrs/24)+' días':Math.floor(hrs)+' h';
-  const bad=hrs>24;
+  const bad=hrs>8;
   el.style.display='block';
   el.style.background=bad?'#F23D4F':'#FFB020';
   el.style.color=bad?'#FFFFFF':'#333333';
-  el.textContent=(bad?'⚠ DATOS DESACTUALIZADOS: ':'Datos con ')+(bad?'último dato hace '+txt:txt)+' ('+DAY.date+' '+DAY.updated+'). El refresh solo recarga el archivo; la actualización la hace el proceso de datos.';
+  el.textContent=(bad?'⚠ DATOS DESACTUALIZADOS: ':'Datos con ')+(bad?'stock al corte de hace '+txt:txt)+' (corte '+cut+'). BigQuery se carga cada 1 a 1,5 h; el refresh solo recarga el archivo.';
 }
 setInterval(updateFreshness,60000);
 
 function renderKPIs(){
   const s=DAY.stats||{};
-  document.getElementById('hupd').textContent      =(DAY.date?DAY.date+' ':'')+(DAY.updated||'—');
+  document.getElementById('hupd').textContent      =DAY.stock_cut?('stock al corte '+DAY.stock_cut.slice(11,16)+' · generado '+(DAY.updated||'—').slice(0,5)+' ('+DAY.date+')'):((DAY.date?DAY.date+' ':'')+(DAY.updated||'—'));
   updateFreshness();
   document.getElementById('k-slots').textContent   =(s.total_slots||0).toLocaleString();
   document.getElementById('k-bays').textContent    =(s.locs_occ||0).toLocaleString();

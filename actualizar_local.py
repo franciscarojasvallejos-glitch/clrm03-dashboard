@@ -54,8 +54,38 @@ def sinmov_is_old():
         return True
     return (time.time() - os.path.getmtime(SINMOV_FILE)) / 3600 > SINMOV_MAX_AGE_H
 
+CUT_SNIPPET = (
+    "import warnings; warnings.filterwarnings('ignore')\n"
+    "from google.cloud import bigquery\n"
+    "c = bigquery.Client(project='meli-bi-data')\n"
+    "r = list(c.query(\"SELECT FORMAT_DATETIME('%Y-%m-%d %H:%M:%S', MAX(FBM_LAST_UPDATED)) AS cut "
+    "FROM `meli-bi-data.WHOWNER.BT_FBM_STOCK_3_ADDRESS` WHERE WAREHOUSE_ID = 'CLRM03'\").result())\n"
+    "print('CUT=' + str(r[0].cut))\n"
+)
+
+def bq_has_new_data():
+    """True si BigQuery tiene stock mas reciente que el ultimo publicado (consulta de ~0.06 GB).
+    Si no se puede comprobar, devuelve True: ante la duda se actualiza."""
+    try:
+        import json
+        with open(os.path.join(DATA, "ocupacion_CLRM03.json"), encoding="utf-8") as f:
+            local_cut = json.load(f).get("stock_cut")
+        r = run([sys.executable, "-c", CUT_SNIPPET])
+        out = [l for l in r.stdout.splitlines() if l.startswith("CUT=")]
+        if r.returncode != 0 or not out or not local_cut:
+            return True
+        remote_cut = out[0][4:].strip()
+        log(f"corte de stock: BigQuery {remote_cut} | publicado {local_cut}")
+        return remote_cut != local_cut
+    except Exception as e:
+        log(f"no se pudo comparar cortes ({e}); se actualiza igual")
+        return True
+
 def main():
     no_push = "--no-push" in sys.argv
+    if "--force" not in sys.argv and not bq_has_new_data():
+        log("BigQuery sin datos nuevos desde la ultima publicacion: no se hace nada")
+        return 0
     steps = list(STEPS)
     if "--force-sinmov" in sys.argv or sinmov_is_old():
         steps.append(["fetch_sin_movimiento.py"])
